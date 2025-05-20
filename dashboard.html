@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinTrack - Personal Finance Tracker</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <div class="logo-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 1v22"></path>
+                <path
+                  d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
+                ></path>
+              </svg>
+            </div>
+            <span>FinTrack</span>
+          </div>
+        </div>
+        <nav class="nav-links">
+          <div class="nav-section">
+            <div class="nav-section-title">Main</div>
+            <div class="nav-link active" data-page="dashboard">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              Dashboard
+            </div>
+            <div class="nav-link" data-page="analytics">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
+                <path d="M21 12a9 9 0 0 0-9-9v9h9z"></path>
+              </svg>
+              Analytics
+            </div>
+            <div class="nav-link" data-page="transactions">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+                ></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              </svg>
+              Transactions
+            </div>
+            <div class="nav-link" data-page="budgets">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                ></path>
+              </svg>
+              Budgets
+            </div>
+          </div>
+
+          <div class="nav-section">
+            <div class="nav-section-title">Planning</div>
+            <div class="nav-link" data-page="goals">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 6v6l4 2"></path>
+              </svg>
+              Goals
+            </div>
+            <div class="nav-link" data-page="investments">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Investments
+            </div>
+          </div>
+
+          <div class="nav-section">
+            <div class="nav-section-title">Settings</div>
+            <div class="nav-link" data-page="account">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="3"></circle>
+                <path
+                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                ></path>
+              </svg>
+              Account
+            </div>
+            <div class="nav-link" data-page="categories">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                ></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+              Categories
+            </div>
+          </div>
+        </nav>
+        <div class="nav-user">
+          <!-- Updated user-avatar to be an img or a div for initials -->
+          <div class="user-avatar" id="sidebarUserAvatar">
+            <!-- Content (initials or img) will be set by JS -->
+          </div>
+          <div class="user-info">
+            <div class="user-name" id="sidebarUserName">John Doe</div>
+            <div class="user-email" id="sidebarUserEmail">
+              john.doe@example.com
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="page-header">
+          <h1 class="page-title" id="currentPageTitle">Dashboard</h1>
+          <div class="header-actions">
+            <button class="btn btn-outline" id="dateRangeBtn">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Current Month
+            </button>
+            <button class="btn btn-primary" id="addTransactionBtn">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Transaction
+            </button>
+          </div>
+        </div>
+
+        <!-- Page Content Area -->
+        <div id="page-dashboard" class="page-content active-page">
+          <div class="dashboard-grid">
+            <!-- Balance Card -->
+            <div class="widget col-span-3 widget-balance">
+              <div class="balance-title">Total Balance</div>
+              <div class="balance-amount" id="totalBalanceAmount">$0.00</div>
+              <div class="balance-details">
+                <!-- Details can be dynamic if needed -->
+              </div>
+            </div>
+
+            <!-- Income Card -->
+            <div class="widget col-span-3 widget-balance">
+              <div class="balance-title">Monthly Income</div>
+              <div class="balance-amount" id="monthlyIncomeAmount">$0.00</div>
+              <div class="balance-details">
+                <!-- Details can be dynamic if needed -->
+              </div>
+            </div>
+
+            <!-- Expenses Card -->
+            <div class="widget col-span-3 widget-balance">
+              <div class="balance-title">Monthly Expenses</div>
+              <div class="balance-amount" id="monthlyExpensesAmount">$0.00</div>
+              <div class="balance-details">
+                <!-- Details can be dynamic if needed -->
+              </div>
+            </div>
+
+            <!-- Savings Card -->
+            <div class="widget col-span-3 widget-balance">
+              <div class="balance-title">Savings Rate</div>
+              <div class="balance-amount" id="savingsRateAmount">0%</div>
+              <div class="balance-details">
+                <!-- Details can be dynamic if needed -->
+              </div>
+            </div>
+
+            <!-- Cash Flow Chart -->
+            <div class="widget col-span-8 widget-chart">
+              <div class="chart-header">
+                <div class="widget-title">Cash Flow (Last 6 Months)</div>
+              </div>
+              <div class="chart-container">
+                <canvas id="cashFlowChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Expenses by Category Widget -->
+            <div class="widget col-span-4 widget-expenses">
+              <div class="widget-title">
+                Expenses by Category (Current Month)
+              </div>
+              <div class="expenses-list" id="expensesByCategoryList">
+                <!-- Content generated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="page-analytics" class="page-content">
+          <div class="dashboard-grid">
+            <!-- Spending Trend Chart -->
+            <div class="widget col-span-12 widget-chart">
+              <div class="chart-header">
+                <div class="widget-title">
+                  Spending Trends (Current vs Last Month)
+                </div>
+              </div>
+              <div class="chart-container">
+                <canvas id="spendingTrendsChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="page-transactions" class="page-content">
+          <div class="dashboard-grid">
+            <!-- Transactions List -->
+            <div class="widget col-span-12 widget-expenses">
+              <div class="widget-title">All Transactions</div>
+              <div class="expenses-list" id="recentTransactionsList">
+                <!-- Content generated by JS -->
+                <p
+                  class="no-transactions"
+                  style="padding: 1rem 0; color: var(--gray-400)"
+                >
+                  No transactions yet.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="page-budgets" class="page-content">
+          <div class="widget col-span-12">
+            <div
+              class="widget-header"
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+              "
+            >
+              <div class="widget-title">Manage Your Budgets</div>
+              <button class="btn btn-primary" id="addNewBudgetBtn">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add/Edit Budget
+              </button>
+            </div>
+            <div id="budgetsListContainer" class="budgets-list">
+              <!-- Budgets will be rendered here by JS -->
+              <p
+                class="no-budgets"
+                style="padding: 1rem 0; color: var(--gray-400)"
+              >
+                No budgets set up yet. Click 'Add/Edit Budget' to start.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div id="page-goals" class="page-content">
+          <p>Goals page content goes here.</p>
+        </div>
+        <div id="page-investments" class="page-content">
+          <p>Investments page content goes here.</p>
+        </div>
+        <div id="page-account" class="page-content">
+          <div class="widget col-span-12">
+            <div class="widget-title" style="margin-bottom: 1.5rem">
+              Account Settings
+            </div>
+            <div class="account-settings-grid">
+              <!-- Profile Picture Section -->
+              <div class="profile-picture-section">
+                <div class="current-avatar-container">
+                  <img
+                    id="currentAccountAvatar"
+                    src="#"
+                    alt="Current Avatar"
+                    class="current-avatar-img"
+                  />
+                  <div
+                    id="currentAccountAvatarInitials"
+                    class="current-avatar-initials"
+                  >
+                    JD
+                  </div>
+                </div>
+                <label
+                  for="accountAvatarInput"
+                  class="btn btn-outline btn-small avatar-upload-label"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 12 12 7 7 12"></polyline>
+                    <line x1="12" y1="7" x2="12" y2="21"></line>
+                  </svg>
+                  Upload New Picture
+                </label>
+                <input
+                  type="file"
+                  id="accountAvatarInput"
+                  accept="image/*"
+                  style="display: none"
+                />
+                <p class="avatar-hint">Recommended: Square image, max 2MB.</p>
+              </div>
+
+              <!-- Profile Details Form -->
+              <form id="accountForm" class="profile-details-form">
+                <div class="form-group">
+                  <label for="accountNameInput">Full Name:</label>
+                  <input
+                    type="text"
+                    id="accountNameInput"
+                    name="accountName"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="accountEmailInput">Email Address:</label>
+                  <input
+                    type="email"
+                    id="accountEmailInput"
+                    name="accountEmail"
+                    required
+                  />
+                </div>
+
+                <!-- Password change fields (optional future feature)
+          <div class="form-group">
+            <label for="accountPasswordInput">New Password:</label>
+            <input type="password" id="accountPasswordInput" name="accountPassword" />
+          </div>
+          <div class="form-group">
+            <label for="accountConfirmPasswordInput">Confirm New Password:</label>
+            <input type="password" id="accountConfirmPasswordInput" name="accountConfirmPassword" />
+          </div>
+          -->
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary">
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div
+              id="accountUpdateStatus"
+              class="form-status-message"
+              style="margin-top: 1rem"
+            ></div>
+          </div>
+        </div>
+        <div id="page-categories" class="page-content">
+          <p>Categories management page content goes here.</p>
+        </div>
+      </main>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div id="transactionModal" class="modal">
+      <div class="modal-content">
+        <span class="close-button" id="closeModalBtn">×</span>
+        <h2 id="modalTitle">Add Transaction</h2>
+        <form id="transactionForm">
+          <input type="hidden" id="transactionId" />
+
+          <label for="description">Description:</label>
+          <input type="text" id="description" name="description" required />
+
+          <label for="amount">Amount:</label>
+          <input
+            type="text"
+            id="amount"
+            name="amount"
+            required
+            inputmode="numeric"
+            pattern="[0-9.,]*"
+          />
+
+          <label for="type">Type:</label>
+          <select id="type" name="type" required>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+
+          <label for="category">Category:</label>
+          <select id="category" name="category" required>
+            <!-- Options populated by JS -->
+          </select>
+
+          <label for="date">Date:</label>
+          <input type="date" id="date" name="date" required />
+
+          <button type="submit" class="btn btn-primary" id="saveTransactionBtn">
+            Save Transaction
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Budget Modal (add this new modal) -->
+    <div id="budgetModal" class="modal">
+      <div class="modal-content">
+        <span class="close-button" id="closeBudgetModalBtn">×</span>
+        <h2 id="budgetModalTitle">Set Budget</h2>
+        <form id="budgetForm">
+          <input type="hidden" id="editingBudgetCategoryKey" />
+          <!-- Stores category if editing -->
+
+          <label for="budgetCategorySelect">Category:</label>
+          <select
+            id="budgetCategorySelect"
+            name="budgetCategorySelect"
+            required
+          >
+            <!-- Options populated by JS from EXPENSE_CATEGORIES_FOR_BUDGETING -->
+          </select>
+
+          <label for="budgetAmountInput">Monthly Amount:</label>
+          <input
+            type="number"
+            id="budgetAmountInput"
+            name="budgetAmountInput"
+            step="0.01"
+            min="0"
+            required
+          />
+
+          <button type="submit" class="btn btn-primary" id="saveBudgetBtn">
+            Save Budget
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const amountInput = document.getElementById("amount");
+      const form = document.getElementById("transactionForm");
+
+      // Format angka dengan pemisah ribuan saat pengguna mengetik
+      amountInput.addEventListener("input", (e) => {
+        const rawValue = e.target.value.replace(/[^\d]/g, ""); // Hanya angka
+        if (!rawValue) {
+          e.target.value = "";
+          return;
+        }
+        const formatted = new Intl.NumberFormat("id-ID").format(rawValue);
+        e.target.value = formatted;
+      });
+
+      // Hapus pemisah sebelum form disubmit
+      form.addEventListener("submit", (e) => {
+        const rawValue = amountInput.value.replace(/[^\d]/g, "");
+        amountInput.value = rawValue; // Set nilai murni sebelum submit
+      });
+    </script>
+
+    <script src="js/data.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
