@@ -16,14 +16,13 @@ const CATEGORIES = [
 const DEFAULT_BUDGETS = {
   // Monthly budgets for typical expense categories
   Food: 400,
-  Shopping: 300 * 15000, // Example: 300 USD * 15000 IDR/USD
-  Transportation: 150 * 15000,
-  Entertainment: 200 * 15000,
-  Utilities: 250 * 15000,
-  Healthcare: 100 * 15000,
-  Other: 100 * 15000,
+  Shopping: 300,
+  Transportation: 150,
+  Entertainment: 200,
+  Utilities: 250,
+  Healthcare: 100,
+  Other: 100,
 };
-DEFAULT_BUDGETS.Food *= 15000; // 400 USD * 15000 IDR/USD
 
 // Define categories that are typically used for expense budgeting
 const EXPENSE_CATEGORIES_FOR_BUDGETING = CATEGORIES.filter(
