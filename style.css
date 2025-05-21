@@ -89,13 +89,14 @@ body {
 
 /* Sidebar */
 .sidebar {
+  padding: 1.5rem;
   width: 260px;
   background-color: var(--sidebar-bg-color);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 1rem;
   transition: width 0.3s ease;
+  height: 100vh; /* Ensure sidebar takes full viewport height */
 }
 
 .sidebar-header {
@@ -181,8 +182,9 @@ body {
 }
 
 .nav-user {
-  margin-top: auto; /* Pushes to bottom */
+  /* margin-top: auto; /* Pushes to bottom */
   padding-top: 1.5rem;
+ padding-bottom: 1rem; /* Add some padding at the bottom */
   border-top: 1px solid var(--border-color);
   display: flex;
   align-items: center;
