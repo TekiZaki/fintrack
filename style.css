@@ -757,8 +757,186 @@ svg {
 }
 
 /* Utility classes */
+.sidebar-toggle-btn {
+  display: none; /* Hidden by default */
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--text-primary); /* Or a more suitable color for an icon */
+}
+
+.sidebar-toggle-btn svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
+}
+
 .no-transactions,
 .no-budgets {
+  padding: 1rem 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Budgets Page Styles */
+.budgets-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+.budget-item {
+  background-color: var(--widget-bg); /* Use widget-bg for consistency */
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: var(--box-shadow);
+}
+/* ... (rest of budget styles) ... */
+
+/* Goals Page Styles */
+.goals-list {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(320px, 1fr)
+  ); /* Slightly wider for goals */
+  gap: 1.5rem;
+}
+
+.goal-item {
+  background-color: var(--widget-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.25rem; /* Slightly more padding */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: var(--box-shadow);
+}
+
+.goal-item-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.goal-icon {
+  /* Similar to budget/expense icon */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* Generic goal icon color, can be customized later */
+  background-color: var(
+    --category-investment-bg
+  ); /* Using investment color as a placeholder */
+  color: var(--category-investment-text);
+}
+.goal-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.goal-info {
+  flex-grow: 1;
+}
+
+.goal-name {
+  font-weight: 600;
+  font-size: 1.125rem; /* 18px */
+  margin-bottom: 0.375rem;
+  color: var(--text-primary);
+}
+
+.goal-amounts {
+  font-size: 0.875rem; /* 14px */
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+.goal-amounts .current {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.goal-amounts .target {
+  color: var(--text-muted);
+}
+
+.goal-progress-bar {
+  height: 10px;
+  background-color: var(--border-color);
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.goal-progress {
+  height: 100%;
+  background-color: var(--primary-color); /* Default progress color */
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+.goal-progress.completed {
+  background-color: var(--success-color);
+}
+
+.goal-target-date {
+  font-size: 0.8125rem; /* 13px */
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+.goal-target-date.overdue {
+  color: var(--danger-color);
+  font-weight: 500;
+}
+
+.goal-item-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto; /* Pushes to bottom */
+  justify-content: flex-end;
+}
+
+/* Form Styles for Goal Modal */
+#goalForm label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+#goalForm input[type="text"],
+#goalForm input[type="date"] {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: #ffffff;
+  font-size: 0.9375rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+#goalForm input[type="text"]:focus, /* Includes number inputs with text type for formatting */
+#goalForm input[type="date"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color), 0.2);
+}
+#goalForm button[type="submit"] {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
+/* Utility classes */
+/* ... */
+.no-goals {
   padding: 1rem 0;
   color: var(--text-muted);
   text-align: center;
@@ -806,5 +984,20 @@ svg {
   .modal-content {
     margin: 5vh auto;
     width: 95%;
+  }
+
+  .sidebar-toggle-btn {
+    display: inline-flex; /* Show on smaller screens */
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-header {
+    position: relative; /* For potential absolute positioning of title if needed, or just for structure */
+  }
+
+  .page-title {
+    /* Adjust if button takes up space and title needs to be pushed */
+    /* Example: margin-left: 40px; if button is on the left and has width */
   }
 }

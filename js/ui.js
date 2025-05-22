@@ -120,10 +120,10 @@ function renderExpensesByCategory(transactions, currentMonth, currentYear) {
 
     if (budgetAmount !== null && budgetAmount > 0) {
       progress = Math.min((spentAmount / budgetAmount) * 100, 100);
-      let progressBarColor = "var(--green-500)";
+      let progressBarColor = "var(--success-color)"; // FIX: Correct CSS variable
       if (progress > 75 && progress < 95)
-        progressBarColor = "var(--yellow-500)";
-      if (progress >= 95) progressBarColor = "var(--red-500)";
+        progressBarColor = "var(--warning-color)"; // FIX: Correct CSS variable
+      if (progress >= 95) progressBarColor = "var(--danger-color)"; // FIX: Correct CSS variable
       progressBarHtml = `<div class="budget-bar">
                                     <div class="budget-progress" style="width: ${progress}%; background-color: ${progressBarColor};"></div>
                                  </div>`;
@@ -131,7 +131,7 @@ function renderExpensesByCategory(transactions, currentMonth, currentYear) {
       // If budget is 0 and spent > 0, it's 100% over.
       progress = spentAmount > 0 ? 100 : 0;
       progressBarHtml = `<div class="budget-bar">
-                                    <div class="budget-progress" style="width: ${progress}%; background-color: var(--red-500);"></div>
+                                    <div class="budget-progress" style="width: ${progress}%; background-color: var(--danger-color);"></div>
                                  </div>`;
     }
 
@@ -197,7 +197,7 @@ function updateDashboardSummaries(transactions, currentMonth, currentYear) {
   ).textContent = `${savingsRate.toFixed(1)}%`;
 }
 
-// Modal handling
+// Transaction Modal Elements and Functions
 const modal = document.getElementById("transactionModal");
 const closeModalBtn = document.getElementById("closeModalBtn");
 const transactionForm = document.getElementById("transactionForm");
@@ -367,9 +367,26 @@ function renderBudgetsPage(budgets) {
         : 0;
     const remaining = budgetAmount - spentAmount;
 
-    let progressColor = "var(--green-500)";
-    if (progress >= 95) progressColor = "var(--red-500)";
-    else if (progress > 75) progressColor = "var(--yellow-500)";
+    let progressColor = "var(--success-color)"; // FIX: Correct CSS variable
+    if (progress >= 95)
+      progressColor = "var(--danger-color)"; // FIX: Correct CSS variable
+    else if (progress > 75) progressColor = "var(--warning-color)"; // FIX: Correct CSS variable
+
+    // console.log(`--- Budget Category: ${category} ---`); // Commented out for cleaner console
+    // console.log("Budget Amount:", budgetAmount);
+    // console.log(
+    //   "Transactions being processed (for this category):",
+    //   getTransactions().filter(
+    //     (tx) =>
+    //       tx.type === "expense" &&
+    //       tx.category === category &&
+    //       new Date(tx.date + "T00:00:00").getMonth() === currentMonth &&
+    //       new Date(tx.date + "T00:00:00").getFullYear() === currentYear
+    //   )
+    // );
+    // console.log("Spent Amount:", spentAmount);
+    // console.log("Calculated Progress (%):", progress);
+    // console.log("Progress Bar Color:", progressColor);
 
     item.innerHTML = `
       <div class="budget-item-main">
@@ -404,14 +421,159 @@ function renderBudgetsPage(budgets) {
   });
 }
 
-// Helper to get a color for progress bars (aligns with icon colors) - This is NOT used for budget progress bars anymore.
-// It was used by the dashboard widget previously, but that's now updated.
-/* function getColorForCategory(category) {
-  if (category.toLowerCase().includes("food")) return "var(--danger)";
-  if (category.toLowerCase().includes("shopping")) return "var(--warning)";
-  // ... other categories ...
-  return "var(--gray-400)"; // Default
-} */
+// Goal Modal Elements and Functions
+const goalModal = document.getElementById("goalModal");
+const closeGoalModalBtn = document.getElementById("closeGoalModalBtn");
+const goalForm = document.getElementById("goalForm");
+const goalModalTitle = document.getElementById("goalModalTitle");
+const goalIdInput = document.getElementById("goalIdInput"); // Hidden input for ID
+
+function openGoalModal(goal = null) {
+  if (!goalModal || !goalForm) return;
+  goalForm.reset(); // Clear form fields
+
+  if (goal) {
+    goalModalTitle.textContent = "Edit Goal";
+    goalIdInput.value = goal.id;
+    document.getElementById("goalNameInput").value = goal.name;
+    // Format amounts for display in the form, then parse back as float when saving
+    document.getElementById("goalTargetAmountInput").value = goal.targetAmount;
+    document.getElementById("goalCurrentAmountInput").value =
+      goal.currentAmount;
+    if (goal.targetDate) {
+      document.getElementById("goalTargetDateInput").value = goal.targetDate;
+    }
+  } else {
+    goalModalTitle.textContent = "Add New Goal";
+    goalIdInput.value = ""; // Clear ID for new goal
+    document.getElementById("goalCurrentAmountInput").value = "0"; // Default current amount to 0
+  }
+  goalModal.style.display = "block";
+}
+
+function closeGoalModal() {
+  if (!goalModal) return;
+  goalModal.style.display = "none";
+}
+
+if (closeGoalModalBtn) closeGoalModalBtn.onclick = closeGoalModal;
+window.addEventListener("click", function (event) {
+  if (event.target == goalModal) {
+    closeGoalModal();
+  }
+});
+
+function formatGoalDate(dateString) {
+  if (!dateString) return "No target date";
+  const date = new Date(dateString + "T00:00:00"); // Ensure local date
+  return date.toLocaleDateString("en-US", {
+    // Using en-US for consistency, or id-ID
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function renderGoalsPage(goals) {
+  const container = document.getElementById("goalsListContainer");
+  if (!container) return;
+
+  // Select the "no goals" element. If it doesn't exist, it will be null.
+  // We'll add it back if needed.
+  let noGoalsEl = container.querySelector(".no-goals");
+  if (!noGoalsEl) {
+    // Create it if it doesn't exist so we can clone it later
+    noGoalsEl = document.createElement("p");
+    noGoalsEl.className = "no-goals";
+    noGoalsEl.style.padding = "1rem 0";
+    noGoalsEl.style.color = "var(--gray-400)";
+    noGoalsEl.textContent =
+      "No goals set up yet. Click 'Add New Goal' to start.";
+  }
+
+  // Clear previous items, preserving the "no goals" message if it exists
+  while (
+    container.firstChild &&
+    !container.firstChild.classList?.contains("no-goals")
+  ) {
+    container.removeChild(container.firstChild);
+  }
+  // Remove old "no goals" message before re-evaluating, as we'll add a new one if needed
+  if (
+    container.firstChild &&
+    container.firstChild.classList?.contains("no-goals")
+  ) {
+    container.removeChild(container.firstChild);
+  }
+
+  if (goals.length === 0) {
+    container.appendChild(noGoalsEl.cloneNode(true)); // Add a clone if no goals
+    return;
+  }
+
+  goals.sort((a, b) => a.name.localeCompare(b.name)); // Sort by name
+
+  goals.forEach((goal) => {
+    const item = document.createElement("div");
+    item.className = "goal-item";
+
+    const targetAmount = parseFloat(goal.targetAmount);
+    const currentAmount = parseFloat(goal.currentAmount);
+    let progress = 0;
+    if (targetAmount > 0) {
+      progress = Math.min((currentAmount / targetAmount) * 100, 100);
+    } else if (currentAmount > 0) {
+      // Target is 0, but has current amount (edge case)
+      progress = 100; // Consider it completed if target is 0 but already saved some
+    }
+
+    let targetDateHtml = "";
+    let dateClass = "";
+    if (goal.targetDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize today's date
+      const tDate = new Date(goal.targetDate + "T00:00:00");
+      if (tDate < today && currentAmount < targetAmount) {
+        dateClass = "overdue";
+      }
+      targetDateHtml = `<div class="goal-target-date ${dateClass}">Target: ${formatGoalDate(
+        goal.targetDate
+      )}</div>`;
+    }
+
+    item.innerHTML = `
+      <div class="goal-item-main">
+        <div class="goal-icon">
+          ${GOAL_ICON_SVG}
+        </div>
+        <div class="goal-info">
+          <div class="goal-name">${goal.name}</div>
+          <div class="goal-amounts">
+            <span class="current">${formatCurrency(
+              currentAmount
+            )}</span> saved of 
+            <span class="target">${formatCurrency(targetAmount)}</span>
+          </div>
+          <div class="goal-progress-bar">
+            <div class="goal-progress ${
+              currentAmount >= targetAmount ? "completed" : ""
+            }" style="width: ${progress}%;"></div>
+          </div>
+          ${targetDateHtml}
+        </div>
+      </div>
+      <div class="goal-item-actions">
+        <button class="btn btn-edit btn-small edit-goal-btn" data-id="${
+          goal.id
+        }">Edit</button>
+        <button class="btn btn-danger btn-small delete-goal-btn" data-id="${
+          goal.id
+        }">Delete</button>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
 
 function updateSidebarUserDisplay(userProfile) {
   const sidebarAvatarEl = document.getElementById("sidebarUserAvatar");
@@ -445,6 +607,34 @@ function updateSidebarUserDisplay(userProfile) {
     sidebarAvatarEl.style.backgroundImage = "none";
   }
 }
+
+// Sidebar Toggle Functionality
+document.addEventListener("DOMContentLoaded", () => {
+  const sidebar = document.querySelector(".sidebar");
+  const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+  // const mainContent = document.querySelector(".main-content"); // Not directly used for close logic, so commented out
+
+  if (sidebar && sidebarToggleBtn) {
+    sidebarToggleBtn.addEventListener("click", (event) => {
+      event.stopPropagation(); // Prevent click from immediately closing sidebar via document listener
+      sidebar.classList.toggle("open");
+    });
+  }
+
+  // Close sidebar when clicking outside of it on mobile
+  document.addEventListener("click", (event) => {
+    if (sidebar && sidebar.classList.contains("open")) {
+      // Check if the click is outside the sidebar AND not on the toggle button
+      if (
+        !sidebar.contains(event.target) &&
+        event.target !== sidebarToggleBtn &&
+        !sidebarToggleBtn.contains(event.target)
+      ) {
+        sidebar.classList.remove("open");
+      }
+    }
+  });
+});
 
 let uploadedAvatarDataUrl = null; // Temporary store for new avatar
 

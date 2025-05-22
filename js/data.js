@@ -44,6 +44,8 @@ const ICONS = {
   Other: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`, // Example icon
 };
 
+const GOAL_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L9 5H5v5l4 4-4 4v5h4l3 3 3-3h4v-5l-4-4 4-4V5h-4L12 2z"></path><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>`; // Trophy Icon
+
 function getTransactions() {
   const transactions = localStorage.getItem("transactions");
   return transactions ? JSON.parse(transactions) : [];
@@ -75,8 +77,15 @@ function deleteTransaction(id) {
 
 // Budget Functions
 function getBudgets() {
-  const budgets = localStorage.getItem("budgets");
-  return budgets ? JSON.parse(budgets) : { ...DEFAULT_BUDGETS }; // Return a copy of defaults if no saved budgets
+  const budgetsFromStorage = localStorage.getItem("budgets");
+  // console.log("Budgets from localStorage:", budgetsFromStorage); // Log raw string - commented out for cleaner console
+  if (budgetsFromStorage) {
+    const parsedBudgets = JSON.parse(budgetsFromStorage);
+    // console.log("Parsed budgets from localStorage:", parsedBudgets); // commented out
+    return parsedBudgets;
+  }
+  // console.log("Falling back to DEFAULT_BUDGETS:", DEFAULT_BUDGETS); // commented out
+  return { ...DEFAULT_BUDGETS }; // Return a copy of defaults
 }
 
 function saveBudgets(budgets) {
@@ -87,6 +96,7 @@ function saveBudgets(budgets) {
 // 2. Modify the returned object
 // 3. saveBudgets(modifiedObject)
 
+// User Profile Functions
 const DEFAULT_USER_PROFILE = {
   name: "John Doe",
   email: "john.doe@example.com",
@@ -105,6 +115,34 @@ function getUserProfile() {
 
 function saveUserProfile(profileData) {
   localStorage.setItem("userProfile", JSON.stringify(profileData));
+}
+
+// Goal Functions
+function getGoals() {
+  const goals = localStorage.getItem("goals");
+  return goals ? JSON.parse(goals) : [];
+}
+
+function saveGoals(goals) {
+  localStorage.setItem("goals", JSON.stringify(goals));
+}
+
+function addGoal(goal) {
+  const goals = getGoals();
+  goals.push({ ...goal, id: Date.now().toString() });
+  saveGoals(goals);
+}
+
+function updateGoal(id, updatedGoal) {
+  let goals = getGoals();
+  goals = goals.map((g) => (g.id === id ? { ...g, ...updatedGoal, id } : g));
+  saveGoals(goals);
+}
+
+function deleteGoal(id) {
+  let goals = getGoals();
+  goals = goals.filter((g) => g.id !== id);
+  saveGoals(goals);
 }
 
 function getCategoryIcon(categoryName) {

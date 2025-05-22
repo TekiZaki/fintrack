@@ -32,68 +32,15 @@ function initApp() {
   // Event listener for the budget form submission
   document
     .getElementById("budgetForm")
-    ?.addEventListener("submit", function (event) {
-      event.preventDefault();
-      if (
-        !document.getElementById("budgetCategorySelect") ||
-        !document.getElementById("budgetAmountInput") ||
-        !document.getElementById("editingBudgetCategoryKey")
-      ) {
-        console.error("Budget form elements not found.");
-        return;
-      }
+    ?.addEventListener("submit", handleBudgetFormSubmit); // Renamed for clarity
 
-      const selectedCategoryInDropdown = document.getElementById(
-        "budgetCategorySelect"
-      ).value;
-      // Get the formatted amount string from the input
-      const formattedAmountString =
-        document.getElementById("budgetAmountInput").value;
-      // Remove thousand separators (dots for IDR) before parsing
-      const unformattedAmountString = formattedAmountString.replace(/\./g, "");
-
-      const amount = parseFloat(unformattedAmountString);
-      const editingCategory = document.getElementById(
-        "editingBudgetCategoryKey"
-      ).value;
-
-      const budgets = getBudgets();
-      let categoryToUpdate;
-
-      if (editingCategory) {
-        // We are in edit mode (category field was disabled)
-        categoryToUpdate = editingCategory;
-      } else {
-        // We are in add mode
-        categoryToUpdate = selectedCategoryInDropdown;
-        // Check if budget for this category already exists when adding a NEW budget
-        if (budgets.hasOwnProperty(categoryToUpdate)) {
-          if (
-            !confirm(
-              `A budget for "${categoryToUpdate}" already exists with an amount of ${formatCurrency(
-                budgets[categoryToUpdate]
-              )}. Do you want to overwrite it with ${formatCurrency(amount)}?`
-            )
-          ) {
-            return; // User cancelled
-          }
-        }
-      }
-
-      if (!categoryToUpdate) {
-        alert("Category not selected or identified. Please select a category.");
-        return;
-      }
-      if (isNaN(amount) || amount < 0) {
-        alert("Please enter a valid, non-negative amount for the budget.");
-        return;
-      }
-
-      budgets[categoryToUpdate] = amount;
-      saveBudgets(budgets);
-      closeBudgetModal();
-      refreshCurrentPageContent(); // Refresh the budgets page (or whichever page is active)
-    });
+  // Goal Modal Listeners (NEW)
+  document
+    .getElementById("addNewGoalBtn")
+    ?.addEventListener("click", () => openGoalModal());
+  document
+    .getElementById("goalForm")
+    ?.addEventListener("submit", handleGoalFormSubmit);
 
   // Event listener for account form submission
   const accountForm = document.getElementById("accountForm");
@@ -140,19 +87,26 @@ function initApp() {
       if (btnEdit) {
         const category = btnEdit.dataset.category;
         const amount = btnEdit.dataset.amount;
-        openBudgetModal(category, parseFloat(amount));
+        handleBudgetAction(category, "edit", parseFloat(amount));
       } else if (btnDelete) {
         const category = btnDelete.dataset.category;
-        if (
-          confirm(
-            `Are you sure you want to delete the budget for "${category}"? This cannot be undone.`
-          )
-        ) {
-          const budgets = getBudgets();
-          delete budgets[category];
-          saveBudgets(budgets);
-          refreshCurrentPageContent();
-        }
+        handleBudgetAction(category, "delete");
+      }
+    });
+  }
+
+  // Event delegation for goal list actions (NEW)
+  const goalsPageWidget = document.querySelector("#page-goals .widget");
+  if (goalsPageWidget) {
+    goalsPageWidget.addEventListener("click", function (event) {
+      const target = event.target;
+      const btnEdit = target.closest(".edit-goal-btn");
+      const btnDelete = target.closest(".delete-goal-btn");
+
+      if (btnEdit && btnEdit.dataset.id) {
+        handleGoalAction(btnEdit.dataset.id, "edit");
+      } else if (btnDelete && btnDelete.dataset.id) {
+        handleGoalAction(btnDelete.dataset.id, "delete");
       }
     });
   }
@@ -247,7 +201,122 @@ function handleFormSubmit(event) {
   refreshCurrentPageContent();
 }
 
+// Renamed for clarity and to match the new handleBudgetAction
+function handleBudgetFormSubmit(event) {
+  event.preventDefault();
+  if (
+    !document.getElementById("budgetCategorySelect") ||
+    !document.getElementById("budgetAmountInput") ||
+    !document.getElementById("editingBudgetCategoryKey")
+  ) {
+    console.error("Budget form elements not found.");
+    return;
+  }
+
+  const selectedCategoryInDropdown = document.getElementById(
+    "budgetCategorySelect"
+  ).value;
+  const formattedAmountString =
+    document.getElementById("budgetAmountInput").value;
+  const unformattedAmountString = formattedAmountString.replace(/\./g, "");
+  const amount = parseFloat(unformattedAmountString);
+  const editingCategory = document.getElementById(
+    "editingBudgetCategoryKey"
+  ).value;
+
+  const budgets = getBudgets();
+  let categoryToUpdate;
+
+  if (editingCategory) {
+    categoryToUpdate = editingCategory;
+  } else {
+    categoryToUpdate = selectedCategoryInDropdown;
+    if (budgets.hasOwnProperty(categoryToUpdate)) {
+      if (
+        !confirm(
+          `A budget for "${categoryToUpdate}" already exists with an amount of ${formatCurrency(
+            budgets[categoryToUpdate]
+          )}. Do you want to overwrite it with ${formatCurrency(amount)}?`
+        )
+      ) {
+        return;
+      }
+    }
+  }
+
+  if (!categoryToUpdate) {
+    alert("Category not selected or identified.");
+    return;
+  }
+  if (isNaN(amount) || amount < 0) {
+    alert("Please enter a valid, non-negative amount for the budget.");
+    return;
+  }
+
+  budgets[categoryToUpdate] = amount;
+  saveBudgets(budgets);
+  closeBudgetModal();
+  refreshCurrentPageContent();
+}
+
+function handleGoalFormSubmit(event) {
+  event.preventDefault();
+  const id = document.getElementById("goalIdInput").value;
+
+  const targetAmountFormatted = document.getElementById(
+    "goalTargetAmountInput"
+  ).value;
+  const currentAmountFormatted = document.getElementById(
+    "goalCurrentAmountInput"
+  ).value;
+
+  const targetAmount = parseFloat(targetAmountFormatted); // Remove thousand separators (dots for IDR)
+  const currentAmount = parseFloat(currentAmountFormatted); // Remove thousand separators (dots for IDR)
+
+  const goal = {
+    name: document.getElementById("goalNameInput").value.trim(),
+    targetAmount: targetAmount,
+    currentAmount: currentAmount,
+    targetDate: document.getElementById("goalTargetDateInput").value || null, // Store as null if empty
+  };
+
+  if (!goal.name) {
+    alert("Goal name cannot be empty.");
+    document.getElementById("goalNameInput")?.focus();
+    return;
+  }
+  if (isNaN(goal.targetAmount) || goal.targetAmount <= 0) {
+    alert("Target amount must be a positive number.");
+    document.getElementById("goalTargetAmountInput")?.focus();
+    return;
+  }
+  if (isNaN(goal.currentAmount) || goal.currentAmount < 0) {
+    alert("Current amount must be a non-negative number.");
+    document.getElementById("goalCurrentAmountInput")?.focus();
+    return;
+  }
+  if (goal.currentAmount > goal.targetAmount) {
+    if (
+      !confirm(
+        "Current amount is greater than the target amount. Is this correct?"
+      )
+    ) {
+      document.getElementById("goalCurrentAmountInput")?.focus();
+      return;
+    }
+  }
+
+  if (id) {
+    updateGoal(id, goal);
+  } else {
+    addGoal(goal);
+  }
+  closeGoalModal();
+  refreshCurrentPageContent();
+}
+
 function handleTransactionAction(transactionId, actionType) {
+  // ... (implementation as before) ...
   if (actionType === "edit") {
     const transactions = getTransactions();
     const transactionToEdit = transactions.find(
@@ -259,6 +328,42 @@ function handleTransactionAction(transactionId, actionType) {
   } else if (actionType === "delete") {
     if (confirm("Are you sure you want to delete this transaction?")) {
       deleteTransaction(transactionId);
+      refreshCurrentPageContent();
+    }
+  }
+}
+
+function handleBudgetAction(category, actionType, amount = null) {
+  if (actionType === "edit") {
+    openBudgetModal(category, amount); // Pass amount directly, not parsed again
+  } else if (actionType === "delete") {
+    if (
+      confirm(
+        `Are you sure you want to delete the budget for "${category}"? This cannot be undone.`
+      )
+    ) {
+      const budgets = getBudgets();
+      delete budgets[category];
+      saveBudgets(budgets);
+      refreshCurrentPageContent();
+    }
+  }
+}
+
+function handleGoalAction(goalId, actionType) {
+  if (actionType === "edit") {
+    const goals = getGoals();
+    const goalToEdit = goals.find((g) => g.id === goalId);
+    if (goalToEdit) {
+      openGoalModal(goalToEdit);
+    }
+  } else if (actionType === "delete") {
+    if (
+      confirm(
+        "Are you sure you want to delete this goal? This cannot be undone."
+      )
+    ) {
+      deleteGoal(goalId);
       refreshCurrentPageContent();
     }
   }
@@ -340,6 +445,10 @@ function refreshCurrentPageContent() {
   } else if (currentPage === "budgets") {
     const budgets = getBudgets();
     renderBudgetsPage(budgets);
+  } else if (currentPage === "goals") {
+    // NEW
+    const goals = getGoals();
+    renderGoalsPage(goals);
   } else if (currentPage === "account") {
     renderAccountPage(userProfile); // Use userProfile here
   }

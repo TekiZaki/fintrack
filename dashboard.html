@@ -126,8 +126,11 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
               >
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M12 6v6l4 2"></path>
+                <!-- Using a trophy icon for Goals -->
+                <path
+                  d="M12 2L9 5H5v5l4 4-4 4v5h4l3 3 3-3h4v-5l-4-4 4-4V5h-4L12 2z"
+                ></path>
+                <path d="M12 15a3 3 0 100-6 3 3 0 000 6z"></path>
               </svg>
               Goals
             </div>
@@ -211,6 +214,23 @@
       <!-- Main Content -->
       <main class="main-content">
         <div class="page-header">
+          <button class="sidebar-toggle-btn" id="sidebarToggleBtn">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
           <h1 class="page-title" id="currentPageTitle">Dashboard</h1>
           <div class="header-actions">
             <button class="btn btn-outline" id="dateRangeBtn">
@@ -388,9 +408,51 @@
             </div>
           </div>
         </div>
+
+        <!-- GOALS PAGE CONTENT START -->
         <div id="page-goals" class="page-content">
-          <p>Goals page content goes here.</p>
+          <div class="widget col-span-12">
+            <div
+              class="widget-header"
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+              "
+            >
+              <div class="widget-title">Track Your Financial Goals</div>
+              <button class="btn btn-primary" id="addNewGoalBtn">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add New Goal
+              </button>
+            </div>
+            <div id="goalsListContainer" class="goals-list">
+              <!-- Goals will be rendered here by JS -->
+              <p
+                class="no-goals"
+                style="padding: 1rem 0; color: var(--gray-400)"
+              >
+                No goals set up yet. Click 'Add New Goal' to start.
+              </p>
+            </div>
+          </div>
         </div>
+        <!-- GOALS PAGE CONTENT END -->
+
         <div id="page-investments" class="page-content">
           <p>Investments page content goes here.</p>
         </div>
@@ -467,17 +529,6 @@
                     required
                   />
                 </div>
-
-                <!-- Password change fields (optional future feature)
-          <div class="form-group">
-            <label for="accountPasswordInput">New Password:</label>
-            <input type="password" id="accountPasswordInput" name="accountPassword" />
-          </div>
-          <div class="form-group">
-            <label for="accountConfirmPasswordInput">Confirm New Password:</label>
-            <input type="password" id="accountConfirmPasswordInput" name="accountConfirmPassword" />
-          </div>
-          -->
                 <div class="form-actions">
                   <button type="submit" class="btn btn-primary">
                     Save Changes
@@ -540,14 +591,13 @@
       </div>
     </div>
 
-    <!-- Budget Modal (add this new modal) -->
+    <!-- Budget Modal -->
     <div id="budgetModal" class="modal">
       <div class="modal-content">
         <span class="close-button" id="closeBudgetModalBtn">×</span>
         <h2 id="budgetModalTitle">Set Budget</h2>
         <form id="budgetForm">
           <input type="hidden" id="editingBudgetCategoryKey" />
-          <!-- Stores category if editing -->
 
           <label for="budgetCategorySelect">Category:</label>
           <select
@@ -555,17 +605,17 @@
             name="budgetCategorySelect"
             required
           >
-            <!-- Options populated by JS from EXPENSE_CATEGORIES_FOR_BUDGETING -->
+            <!-- Options populated by JS -->
           </select>
 
           <label for="budgetAmountInput">Monthly Amount:</label>
           <input
-            type="number"
+            type="text"
             id="budgetAmountInput"
             name="budgetAmountInput"
-            step="0.01"
-            min="0"
             required
+            inputmode="numeric"
+            pattern="[0-9.,]*"
           />
 
           <button type="submit" class="btn btn-primary" id="saveBudgetBtn">
@@ -575,26 +625,76 @@
       </div>
     </div>
 
+    <!-- Goal Modal (NEW) -->
+    <div id="goalModal" class="modal">
+      <div class="modal-content">
+        <span class="close-button" id="closeGoalModalBtn">×</span>
+        <h2 id="goalModalTitle">Add New Goal</h2>
+        <form id="goalForm">
+          <input type="hidden" id="goalIdInput" />
+
+          <label for="goalNameInput">Goal Name:</label>
+          <input type="text" id="goalNameInput" name="goalName" required />
+
+          <label for="goalTargetAmountInput">Target Amount:</label>
+          <input
+            type="text"
+            id="goalTargetAmountInput"
+            name="goalTargetAmount"
+            required
+            inputmode="numeric"
+            pattern="[0-9.,]*"
+          />
+
+          <label for="goalCurrentAmountInput">Current Saved Amount:</label>
+          <input
+            type="text"
+            id="goalCurrentAmountInput"
+            name="goalCurrentAmount"
+            required
+            inputmode="numeric"
+            pattern="[0-9.,]*"
+          />
+
+          <label for="goalTargetDateInput">Target Date (Optional):</label>
+          <input type="date" id="goalTargetDateInput" name="goalTargetDate" />
+
+          <button type="submit" class="btn btn-primary" id="saveGoalBtn">
+            Save Goal
+          </button>
+        </form>
+      </div>
+    </div>
+
     <script>
-      const amountInput = document.getElementById("amount");
-      const form = document.getElementById("transactionForm");
+      // Helper for amount input formatting (re-usable)
+      function setupAmountInputFormatting(inputId, formId) {
+        const amountInput = document.getElementById(inputId);
+        const form = document.getElementById(formId);
 
-      // Format angka dengan pemisah ribuan saat pengguna mengetik
-      amountInput.addEventListener("input", (e) => {
-        const rawValue = e.target.value.replace(/[^\d]/g, ""); // Hanya angka
-        if (!rawValue) {
-          e.target.value = "";
-          return;
-        }
-        const formatted = new Intl.NumberFormat("id-ID").format(rawValue);
-        e.target.value = formatted;
-      });
+        if (!amountInput || !form) return;
 
-      // Hapus pemisah sebelum form disubmit
-      form.addEventListener("submit", (e) => {
-        const rawValue = amountInput.value.replace(/[^\d]/g, "");
-        amountInput.value = rawValue; // Set nilai murni sebelum submit
-      });
+        amountInput.addEventListener("input", (e) => {
+          const rawValue = e.target.value.replace(/[^\d]/g, "");
+          if (!rawValue) {
+            e.target.value = "";
+            return;
+          }
+          const formatted = new Intl.NumberFormat("id-ID").format(rawValue);
+          e.target.value = formatted;
+        });
+
+        form.addEventListener("submit", () => {
+          const rawValue = amountInput.value.replace(/[^\d]/g, "");
+          amountInput.value = rawValue;
+        });
+      }
+
+      // Initialize formatting for all relevant amount inputs
+      setupAmountInputFormatting("amount", "transactionForm");
+      setupAmountInputFormatting("budgetAmountInput", "budgetForm");
+      setupAmountInputFormatting("goalTargetAmountInput", "goalForm");
+      setupAmountInputFormatting("goalCurrentAmountInput", "goalForm");
     </script>
 
     <script src="js/data.js"></script>
