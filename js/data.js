@@ -40,13 +40,13 @@ const DEFAULT_CATEGORIES_DATA = [
 const DEFAULT_BUDGETS = {
   // Monthly budgets for typical expense categories
   // These refer to the `name` property of default expense categories
-  Food: 400,
-  Shopping: 300,
-  Transportation: 150,
-  Entertainment: 200,
-  Utilities: 250,
-  Healthcare: 100,
-  Other: 100, // Default 'Other' expense budget
+  Food: 2000000, // IDR 2,000,000
+  Shopping: 1000000, // IDR 1,000,000
+  Transportation: 500000, // IDR 500,000
+  Entertainment: 750000, // IDR 750,000
+  Utilities: 800000, // IDR 800,000 (listrik, air, internet, dll.)
+  Healthcare: 300000, // IDR 300,000
+  Other: 500000, // IDR 500,000 for other expenses
 };
 
 // Define categories that are typically used for expense budgeting
