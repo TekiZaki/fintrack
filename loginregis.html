@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinTrack - Authentication</title>
+    <link rel="stylesheet" href="auth.css" />
+    <link rel="icon" href="fintrack.png" type="image/x-icon" />
+  </head>
+  <body>
+    <div class="auth-container">
+      <div class="auth-logo">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M12 1v22"></path>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+        </svg>
+        FinTrack
+      </div>
+
+      <!-- Login Form -->
+      <div id="loginFormContainer">
+        <h1>Welcome Back!</h1>
+        <p>Please log in to access your account.</p>
+        <form id="loginForm" class="auth-form">
+          <div
+            id="loginErrorMessage"
+            class="error-message"
+            style="display: none"
+          ></div>
+          <div class="form-group">
+            <label for="loginEmail">Email Address</label>
+            <input type="email" id="loginEmail" name="loginEmail" required />
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input
+              type="password"
+              id="loginPassword"
+              name="loginPassword"
+              required
+            />
+          </div>
+          <button type="submit" class="btn">Login</button>
+        </form>
+        <p class="auth-switch-link">
+          Don't have an account? <a href="#" id="showRegister">Sign up here</a>
+        </p>
+      </div>
+
+      <!-- Registration Form -->
+      <div id="registerFormContainer" style="display: none">
+        <h1>Create Account</h1>
+        <p>Join FinTrack to manage your finances.</p>
+        <form id="registerForm" class="auth-form">
+          <div
+            id="registerErrorMessage"
+            class="error-message"
+            style="display: none"
+          ></div>
+          <div class="form-group">
+            <label for="registerName">Full Name</label>
+            <input type="text" id="registerName" name="registerName" required />
+          </div>
+          <div class="form-group">
+            <label for="registerEmail">Email Address</label>
+            <input
+              type="email"
+              id="registerEmail"
+              name="registerEmail"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="registerPassword">Password</label>
+            <input
+              type="password"
+              id="registerPassword"
+              name="registerPassword"
+              required
+            />
+          </div>
+          <button type="submit" class="btn">Register</button>
+        </form>
+        <p class="auth-switch-link">
+          Already have an account? <a href="#" id="showLogin">Login here</a>
+        </p>
+      </div>
+    </div>
+    <!-- auth.js needs access to data.js functions for initializing user data -->
+    <script src="js/data.js"></script>
+    <script src="auth.js"></script>
+  </body>
+</html>

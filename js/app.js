@@ -3,22 +3,28 @@
 let currentPage = "dashboard"; // Default page
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (!checkAuth()) {
+    // checkAuth is from auth.js
+    return; // checkAuth will handle redirection if necessary
+  }
   initApp();
 });
 
 function initApp() {
-  const userProfile = getUserProfile(); // Get profile early
-  updateSidebarUserDisplay(userProfile); // Update sidebar immediately
+  const userProfile = getUserProfile(); // From data.js (now user-scoped)
+  if (userProfile && userProfile.email) {
+    // Ensure profile is valid
+    updateSidebarUserDisplay(userProfile); // From ui.js
+  } else {
+    // This might happen if data is corrupted or user somehow bypassed login init
+    console.error("User profile not found or invalid. Logging out.");
+    logoutUser();
+    return;
+  }
 
-  // populateCategoryDropdown(); // For the transaction modal - This is now handled by ui.js openModal
-  // Ensure the transaction modal's category dropdown is populated correctly when it opens.
+  setupNavigation();
+  showPage(currentPage);
 
-  setupNavigation(); // Setup sidebar navigation and page switching
-
-  // Show the initial page (default 'dashboard') and render its content
-  showPage(currentPage); // This will also call initCharts and refreshCurrentPageContent
-
-  // Setup event listeners for global elements like the modal
   document
     .getElementById("addTransactionBtn")
     ?.addEventListener("click", () => openModal());
@@ -26,17 +32,13 @@ function initApp() {
     .getElementById("transactionForm")
     ?.addEventListener("submit", handleFormSubmit);
 
-  // Event listener for the "Add New Budget" button on the Budgets page
   document
     .getElementById("addNewBudgetBtn")
     ?.addEventListener("click", () => openBudgetModal());
-
-  // Event listener for the budget form submission
   document
     .getElementById("budgetForm")
-    ?.addEventListener("submit", handleBudgetFormSubmit); // Renamed for clarity
+    ?.addEventListener("submit", handleBudgetFormSubmit);
 
-  // Goal Modal Listeners (NEW)
   document
     .getElementById("addNewGoalBtn")
     ?.addEventListener("click", () => openGoalModal());
@@ -44,50 +46,39 @@ function initApp() {
     .getElementById("goalForm")
     ?.addEventListener("submit", handleGoalFormSubmit);
 
-  // Event listener for "Add New Category" button
   document
     .getElementById("addNewCategoryBtn")
-    ?.addEventListener("click", () => openCategoryModal()); // openCategoryModal is in ui.js
-
-  // Event listener for the category form submission
+    ?.addEventListener("click", () => openCategoryModal());
   document
     .getElementById("categoryForm")
     ?.addEventListener("submit", handleCategoryFormSubmit);
 
-  // Event listener for transaction type change to update categories in the modal
   const transactionTypeSelect = document.getElementById("type");
   if (transactionTypeSelect) {
     transactionTypeSelect.addEventListener("change", (event) => {
       const selectedType = event.target.value;
-      populateCategoryDropdown("category", selectedType); // populateCategoryDropdown is in ui.js
+      populateCategoryDropdown("category", selectedType);
     });
   }
 
-  // Event listener for account form submission
   const accountForm = document.getElementById("accountForm");
   if (accountForm) {
     accountForm.addEventListener("submit", handleAccountFormSubmit);
   }
 
-  // Event listener for avatar input change (for preview)
   const avatarInput = document.getElementById("accountAvatarInput");
   if (avatarInput) {
     avatarInput.addEventListener("change", handleAvatarPreview);
   }
 
-  // Event delegation for edit/delete buttons on transaction list
-  // Attach to a static parent that is always in the DOM (e.g., main-content)
   document
     .querySelector(".main-content")
     .addEventListener("click", function (event) {
       const target = event.target;
-      // Check if the click originated from within the transactions list
       const transactionList = target.closest("#recentTransactionsList");
-
       if (transactionList) {
         const btnEdit = target.closest(".btn-edit");
         const btnDelete = target.closest(".btn-danger");
-
         if (btnEdit && btnEdit.dataset.id) {
           handleTransactionAction(btnEdit.dataset.id, "edit");
         } else if (btnDelete && btnDelete.dataset.id) {
@@ -96,15 +87,12 @@ function initApp() {
       }
     });
 
-  // Event delegation for edit/delete budget buttons
-  // Attach to a static parent that is always in the DOM for the budgets page
   const budgetsPageWidget = document.querySelector("#page-budgets .widget");
   if (budgetsPageWidget) {
     budgetsPageWidget.addEventListener("click", function (event) {
       const target = event.target;
       const btnEdit = target.closest(".edit-budget-btn");
       const btnDelete = target.closest(".delete-budget-btn");
-
       if (btnEdit) {
         const category = btnEdit.dataset.category;
         const amount = btnEdit.dataset.amount;
@@ -116,14 +104,12 @@ function initApp() {
     });
   }
 
-  // Event delegation for goal list actions (NEW)
   const goalsPageWidget = document.querySelector("#page-goals .widget");
   if (goalsPageWidget) {
     goalsPageWidget.addEventListener("click", function (event) {
       const target = event.target;
       const btnEdit = target.closest(".edit-goal-btn");
       const btnDelete = target.closest(".delete-goal-btn");
-
       if (btnEdit && btnEdit.dataset.id) {
         handleGoalAction(btnEdit.dataset.id, "edit");
       } else if (btnDelete && btnDelete.dataset.id) {
@@ -132,7 +118,6 @@ function initApp() {
     });
   }
 
-  // Event delegation for delete category buttons
   const categoriesPageWidget = document.querySelector(
     "#page-categories .widget"
   );
@@ -140,11 +125,8 @@ function initApp() {
     categoriesPageWidget.addEventListener("click", function (event) {
       const target = event.target;
       const btnDelete = target.closest(".btn-delete-category");
-      // const btnEdit = target.closest(".btn-edit-category"); // For future edit functionality
-
       if (btnDelete && btnDelete.dataset.name && btnDelete.dataset.type) {
         if (!btnDelete.disabled) {
-          // Check if button is not disabled (i.e., not a default category)
           handleCategoryAction(
             btnDelete.dataset.name,
             btnDelete.dataset.type,
@@ -152,12 +134,14 @@ function initApp() {
           );
         }
       }
-      // if (btnEdit && btnEdit.dataset.name && btnEdit.dataset.type) {
-      //   if (!btnEdit.disabled) {
-      //     const category = getAllCategories().find(c => c.name === btnEdit.dataset.name && c.type === btnEdit.dataset.type);
-      //     if (category) openCategoryModal(category); // openCategoryModal is in ui.js
-      //   }
-      // }
+    });
+  }
+
+  const logoutLink = document.getElementById("logoutLink");
+  if (logoutLink) {
+    logoutLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      logoutUser(); // from auth.js
     });
   }
 }
@@ -165,6 +149,9 @@ function initApp() {
 function setupNavigation() {
   const navLinks = document.querySelectorAll(".nav-link");
   navLinks.forEach((link) => {
+    // Skip logout link for page navigation logic
+    if (link.id === "logoutLink") return;
+
     link.addEventListener("click", () => {
       const pageId = link.dataset.page;
       if (pageId && pageId !== currentPage) {
@@ -172,11 +159,10 @@ function setupNavigation() {
         link.classList.add("active");
         showPage(pageId);
       } else if (pageId === currentPage) {
-        // Optionally refresh if clicking the active page again, or do nothing
-        // For now, do nothing to prevent unnecessary re-renders
+        // Optionally refresh, or do nothing
       } else if (!pageId) {
         console.warn(
-          "Nav link clicked without data-page attribute:",
+          "Nav link clicked without data-page:",
           link.textContent.trim()
         );
       }
@@ -185,32 +171,24 @@ function setupNavigation() {
 }
 
 function showPage(pageId) {
-  // Hide all page content divs
   document.querySelectorAll(".page-content").forEach((pageDiv) => {
     pageDiv.classList.remove("active-page");
   });
 
-  // Show the selected page content div
   const targetPage = document.getElementById(`page-${pageId}`);
   if (targetPage) {
     targetPage.classList.add("active-page");
-    currentPage = pageId; // Update current page tracker
-    document.getElementById("currentPageTitle").textContent = pageId; // Update header title
-
-    // Initialize charts if necessary for the current page
-    // initCharts will only initialize if canvas exists and instance is not already created
+    currentPage = pageId;
+    document.getElementById("currentPageTitle").textContent = pageId;
     initCharts();
-
-    // Refresh content specific to this page
     refreshCurrentPageContent();
   } else {
     console.warn(`Page content for '${pageId}' not found.`);
-    // Fallback to dashboard if requested page doesn't exist
     if (pageId !== "dashboard") {
       showPage("dashboard");
       document
         .querySelector('.nav-link[data-page="dashboard"]')
-        .classList.add("active");
+        ?.classList.add("active");
     }
   }
 }
@@ -218,27 +196,20 @@ function showPage(pageId) {
 function handleFormSubmit(event) {
   event.preventDefault();
   const id = document.getElementById("transactionId").value;
-
-  // Get the formatted amount string from the input
   const formattedAmountString = document.getElementById("amount").value;
-
-  // Remove thousand separators (dots for IDR) before parsing
   const unformattedAmountString = formattedAmountString.replace(/\./g, "");
 
   const transaction = {
     description: document.getElementById("description").value,
-    amount: parseFloat(unformattedAmountString), // Use the unformatted string for parsing
+    amount: parseFloat(unformattedAmountString),
     type: document.getElementById("type").value,
     category: document.getElementById("category").value,
     date: document.getElementById("date").value,
   };
 
-  // Validate amount
   if (isNaN(transaction.amount) || transaction.amount <= 0) {
-    // Also check if amount is positive
     alert("Invalid amount. Please enter a valid positive number.");
-    const amountInput = document.getElementById("amount");
-    if (amountInput) amountInput.focus(); // Focus back on amount field
+    document.getElementById("amount")?.focus();
     return;
   }
 
@@ -251,7 +222,6 @@ function handleFormSubmit(event) {
   refreshCurrentPageContent();
 }
 
-// Renamed for clarity and to match the new handleBudgetAction
 function handleBudgetFormSubmit(event) {
   event.preventDefault();
   if (
@@ -274,7 +244,7 @@ function handleBudgetFormSubmit(event) {
     "editingBudgetCategoryKey"
   ).value;
 
-  const budgets = getBudgets();
+  const budgets = getBudgets(); // Scoped
   let categoryToUpdate;
 
   if (editingCategory) {
@@ -284,9 +254,7 @@ function handleBudgetFormSubmit(event) {
     if (budgets.hasOwnProperty(categoryToUpdate)) {
       if (
         !confirm(
-          `A budget for "${categoryToUpdate}" already exists with an amount of ${formatCurrency(
-            budgets[categoryToUpdate]
-          )}. Do you want to overwrite it with ${formatCurrency(amount)}?`
+          `A budget for "${categoryToUpdate}" already exists. Overwrite it?`
         )
       ) {
         return;
@@ -304,7 +272,7 @@ function handleBudgetFormSubmit(event) {
   }
 
   budgets[categoryToUpdate] = amount;
-  saveBudgets(budgets);
+  saveBudgets(budgets); // Scoped
   closeBudgetModal();
   refreshCurrentPageContent();
 }
@@ -312,22 +280,20 @@ function handleBudgetFormSubmit(event) {
 function handleGoalFormSubmit(event) {
   event.preventDefault();
   const id = document.getElementById("goalIdInput").value;
-
   const targetAmountFormatted = document.getElementById(
     "goalTargetAmountInput"
   ).value;
   const currentAmountFormatted = document.getElementById(
     "goalCurrentAmountInput"
   ).value;
-
-  const targetAmount = parseFloat(targetAmountFormatted); // Remove thousand separators (dots for IDR)
-  const currentAmount = parseFloat(currentAmountFormatted); // Remove thousand separators (dots for IDR)
+  const targetAmount = parseFloat(targetAmountFormatted.replace(/\./g, ""));
+  const currentAmount = parseFloat(currentAmountFormatted.replace(/\./g, ""));
 
   const goal = {
     name: document.getElementById("goalNameInput").value.trim(),
     targetAmount: targetAmount,
     currentAmount: currentAmount,
-    targetDate: document.getElementById("goalTargetDateInput").value || null, // Store as null if empty
+    targetDate: document.getElementById("goalTargetDateInput").value || null,
   };
 
   if (!goal.name) {
@@ -347,9 +313,7 @@ function handleGoalFormSubmit(event) {
   }
   if (goal.currentAmount > goal.targetAmount) {
     if (
-      !confirm(
-        "Current amount is greater than the target amount. Is this correct?"
-      )
+      !confirm("Current amount is greater than the target. Is this correct?")
     ) {
       document.getElementById("goalCurrentAmountInput")?.focus();
       return;
@@ -357,9 +321,9 @@ function handleGoalFormSubmit(event) {
   }
 
   if (id) {
-    updateGoal(id, goal);
+    updateGoal(id, goal); // Scoped
   } else {
-    addGoal(goal);
+    addGoal(goal); // Scoped
   }
   closeGoalModal();
   refreshCurrentPageContent();
@@ -372,35 +336,21 @@ function handleCategoryFormSubmit(event) {
     .value.trim();
   const categoryType = document.getElementById("categoryTypeSelect").value;
 
-  // const originalName = document.getElementById("editingCategoryName").value;
-  // const isDefault = document.getElementById("isEditingCategoryDefault").value === "true";
-
   if (!categoryName) {
     alert("Category name cannot be empty.");
     return;
   }
-
-  // For now, only adding new categories. Edit functionality is more complex due to dependencies.
-  // if (originalName && !isDefault) { // If originalName exists and it's not a default, it's an edit
-  // alert("Editing categories is not yet implemented.");
-  // For future: updateCategory(originalName, { name: categoryName, type: categoryType });
-  // } else if (originalName && isDefault) {
-  // alert("Default categories cannot be modified in this way.");
-  // }
-  // else { // Adding new category
-  const success = addCategory({ name: categoryName, type: categoryType }); // addCategory is in data.js
+  const success = addCategory({ name: categoryName, type: categoryType }); // Scoped
   if (success) {
-    closeCategoryModal(); // in ui.js
+    closeCategoryModal();
     refreshCurrentPageContent();
-    refreshCategoryDependentUIData(); // New function to update dropdowns etc.
+    refreshCategoryDependentUIData();
   }
-  // }
 }
 
 function handleTransactionAction(transactionId, actionType) {
-  // ... (implementation as before) ...
   if (actionType === "edit") {
-    const transactions = getTransactions();
+    const transactions = getTransactions(); // Scoped
     const transactionToEdit = transactions.find(
       (tx) => tx.id === transactionId
     );
@@ -409,7 +359,7 @@ function handleTransactionAction(transactionId, actionType) {
     }
   } else if (actionType === "delete") {
     if (confirm("Are you sure you want to delete this transaction?")) {
-      deleteTransaction(transactionId);
+      deleteTransaction(transactionId); // Scoped
       refreshCurrentPageContent();
     }
   }
@@ -417,16 +367,14 @@ function handleTransactionAction(transactionId, actionType) {
 
 function handleBudgetAction(category, actionType, amount = null) {
   if (actionType === "edit") {
-    openBudgetModal(category, amount); // Pass amount directly, not parsed again
+    openBudgetModal(category, amount);
   } else if (actionType === "delete") {
     if (
-      confirm(
-        `Are you sure you want to delete the budget for "${category}"? This cannot be undone.`
-      )
+      confirm(`Are you sure you want to delete the budget for "${category}"?`)
     ) {
-      const budgets = getBudgets();
+      const budgets = getBudgets(); // Scoped
       delete budgets[category];
-      saveBudgets(budgets);
+      saveBudgets(budgets); // Scoped
       refreshCurrentPageContent();
     }
   }
@@ -434,18 +382,14 @@ function handleBudgetAction(category, actionType, amount = null) {
 
 function handleGoalAction(goalId, actionType) {
   if (actionType === "edit") {
-    const goals = getGoals();
+    const goals = getGoals(); // Scoped
     const goalToEdit = goals.find((g) => g.id === goalId);
     if (goalToEdit) {
       openGoalModal(goalToEdit);
     }
   } else if (actionType === "delete") {
-    if (
-      confirm(
-        "Are you sure you want to delete this goal? This cannot be undone."
-      )
-    ) {
-      deleteGoal(goalId);
+    if (confirm("Are you sure you want to delete this goal?")) {
+      deleteGoal(goalId); // Scoped
       refreshCurrentPageContent();
     }
   }
@@ -455,36 +399,34 @@ function handleCategoryAction(categoryName, categoryType, actionType) {
   if (actionType === "delete") {
     if (
       confirm(
-        `Are you sure you want to delete the category "${categoryName} (${categoryType})"? This cannot be undone if not used.`
+        `Are you sure you want to delete the category "${categoryName} (${categoryType})"?`
       )
     ) {
-      const success = deleteCategory(categoryName, categoryType); // deleteCategory is in data.js
+      const success = deleteCategory(categoryName, categoryType); // Scoped
       if (success) {
         refreshCurrentPageContent();
         refreshCategoryDependentUIData();
       }
     }
   }
-  // else if (actionType === "edit") {
-  //   // Find category and open modal - handled by event listener directly for now
-  // }
 }
+
 function handleAccountFormSubmit(event) {
   event.preventDefault();
   const accountUpdateStatus = document.getElementById("accountUpdateStatus");
-  accountUpdateStatus.textContent = ""; // Clear previous messages
+  accountUpdateStatus.textContent = "";
   accountUpdateStatus.classList.remove("success", "error");
 
   const newName = document.getElementById("accountNameInput").value.trim();
   const newEmail = document.getElementById("accountEmailInput").value.trim();
+
+  const currentLoggedInEmail = getCurrentUserEmail(); // From auth.js
 
   if (!newName || !newEmail) {
     accountUpdateStatus.textContent = "Name and Email cannot be empty.";
     accountUpdateStatus.classList.add("error");
     return;
   }
-
-  // Basic email validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(newEmail)) {
     accountUpdateStatus.textContent = "Please enter a valid email address.";
@@ -492,22 +434,76 @@ function handleAccountFormSubmit(event) {
     return;
   }
 
-  const currentProfile = getUserProfile();
-  const updatedProfile = {
-    ...currentProfile, // Keep existing avatar by default
+  // Get current user's full data block key (old key if email changes)
+  const oldUserDataKey = `userData_${currentLoggedInEmail}`;
+  // New user data block key (if email changes)
+  const newUserDataKey = `userData_${newEmail}`;
+
+  // Get the current user's profile from their scoped data
+  const currentProfile = getUserProfile(); // from data.js, already scoped
+  const updatedProfileData = {
+    // This is the object to save into the user's data block
+    ...currentProfile,
     name: newName,
-    email: newEmail,
+    email: newEmail, // This is the new email for the profile object
   };
 
   if (uploadedAvatarDataUrl) {
-    updatedProfile.avatar = uploadedAvatarDataUrl;
+    updatedProfileData.avatar = uploadedAvatarDataUrl;
   }
 
-  saveUserProfile(updatedProfile);
-  updateSidebarUserDisplay(updatedProfile); // Update sidebar
-  renderAccountPage(updatedProfile); // Re-render account page with new data (and clear preview)
+  // Update the master list of users (for login)
+  let allSystemUsers = JSON.parse(
+    localStorage.getItem("finTrackUsers") || "[]"
+  );
+  const userIndexInSystemList = allSystemUsers.findIndex(
+    (u) => u.email === currentLoggedInEmail
+  );
 
-  // Optional: Show success message
+  if (userIndexInSystemList !== -1) {
+    // Check if new email is taken by ANOTHER user in the system list
+    if (
+      newEmail !== currentLoggedInEmail &&
+      allSystemUsers.some(
+        (u, i) => i !== userIndexInSystemList && u.email === newEmail
+      )
+    ) {
+      accountUpdateStatus.textContent =
+        "This email is already registered to another account.";
+      accountUpdateStatus.classList.add("error");
+      return;
+    }
+    allSystemUsers[userIndexInSystemList].name = newName;
+    allSystemUsers[userIndexInSystemList].email = newEmail; // Update email in the system login list
+    localStorage.setItem("finTrackUsers", JSON.stringify(allSystemUsers));
+  } else {
+    accountUpdateStatus.textContent =
+      "Error: User not found in system list for update.";
+    accountUpdateStatus.classList.add("error");
+    return; // Critical error
+  }
+
+  // Now handle the user-specific data block in localStorage
+  if (newEmail !== currentLoggedInEmail) {
+    // Email has changed, so we need to "move" the user's data block
+    const currentUserAllData = JSON.parse(
+      localStorage.getItem(oldUserDataKey) || "{}"
+    );
+    currentUserAllData.profile = updatedProfileData; // Put the updated profile into the data
+
+    localStorage.removeItem(oldUserDataKey); // Remove the old data block
+    localStorage.setItem(newUserDataKey, JSON.stringify(currentUserAllData)); // Save under the new key
+
+    // IMPORTANT: Update the logged-in user identifier
+    localStorage.setItem("finTrackLoggedInUser", newEmail);
+  } else {
+    // Email is the same, just save the updated profile to the existing user data block
+    saveUserProfile(updatedProfileData); // saveUserProfile from data.js saves to current user's block
+  }
+
+  updateSidebarUserDisplay(updatedProfileData);
+  renderAccountPage(updatedProfileData);
+
   accountUpdateStatus.textContent = "Profile updated successfully!";
   accountUpdateStatus.classList.add("success");
   setTimeout(() => {
@@ -515,38 +511,29 @@ function handleAccountFormSubmit(event) {
     accountUpdateStatus.classList.remove("success");
   }, 3000);
 
-  uploadedAvatarDataUrl = null; // Clear after successful save
-  document.getElementById("accountAvatarInput").value = ""; // Clear file input
+  uploadedAvatarDataUrl = null;
+  document.getElementById("accountAvatarInput").value = "";
 }
 
 function refreshCategoryDependentUIData() {
-  // Re-populate transaction modal category dropdown
-  // The openModal function for transactions in ui.js should already call populateCategoryDropdown.
-  // We just need to ensure it's called with the right parameters if the modal is open,
-  // or that it will be fresh next time it's opened.
-  // For simplicity, we assume openModal will always fetch fresh categories.
-
-  // Re-populate budget modal category dropdown
-  // Similar to transaction modal, openBudgetModal in ui.js should handle this.
-
-  // If on dashboard, re-render expenses by category widget as available categories might change
   if (currentPage === "dashboard") {
-    const transactions = getTransactions();
+    const transactions = getTransactions(); // Scoped
     const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    renderExpensesByCategory(transactions, currentMonth, currentYear); // in ui.js
+    renderExpensesByCategory(
+      transactions,
+      today.getMonth(),
+      today.getFullYear()
+    );
   }
-  // If on budgets page, re-render budgets as available categories for new budgets might change
   if (currentPage === "budgets") {
-    const budgets = getBudgets();
-    renderBudgetsPage(budgets); // in ui.js
+    const budgets = getBudgets(); // Scoped
+    renderBudgetsPage(budgets);
   }
 }
 
 function refreshCurrentPageContent() {
-  const transactions = getTransactions();
-  const userProfile = getUserProfile(); // Get latest profile
+  const transactions = getTransactions(); // Scoped
+  const userProfile = getUserProfile(); // Scoped
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
@@ -561,24 +548,21 @@ function refreshCurrentPageContent() {
 
   if (currentPage === "dashboard") {
     updateDashboardSummaries(transactions, currentMonth, currentYear);
-    renderExpensesByCategory(transactions, currentMonth, currentYear); // This now uses getBudgets()
+    renderExpensesByCategory(transactions, currentMonth, currentYear);
     updateCashFlowChart(transactions);
   } else if (currentPage === "analytics") {
     updateSpendingTrendsChart(transactions, currentMonth, currentYear);
   } else if (currentPage === "transactions") {
     renderTransactionsPage(transactions);
   } else if (currentPage === "budgets") {
-    const budgets = getBudgets();
+    const budgets = getBudgets(); // Scoped
     renderBudgetsPage(budgets);
   } else if (currentPage === "goals") {
-    // NEW
-    const goals = getGoals();
+    const goals = getGoals(); // Scoped
     renderGoalsPage(goals);
   } else if (currentPage === "account") {
-    renderAccountPage(userProfile); // Use userProfile here
+    renderAccountPage(userProfile); // Uses scoped userProfile
   } else if (currentPage === "categories") {
-    // NEW
-    renderCategoriesPage(); // in ui.js
+    renderCategoriesPage(); // Uses getAllCategories which is scoped
   }
-  // ... (other pages) ...
 }
