@@ -1,0 +1,1120 @@
+/* style.css */
+
+/* Variables */
+:root {
+  --primary-color: #3b82f6; /* Blue 500 */
+  --primary-hover-color: #2563eb; /* Blue 600 */
+  --secondary-color: #6b7280; /* Gray 500 */
+  --success-color: #10b981; /* Green 500 */
+  --danger-color: #ef4444; /* Red 500 */
+  --warning-color: #f59e0b; /* Yellow 500 */
+  --info-color: #3b82f6; /* Blue 500 */
+
+  --bg-color: #f3f4f6; /* Gray 100 */
+  --sidebar-bg: #ffffff;
+  --widget-bg: #ffffff;
+  --modal-bg: #ffffff;
+
+  --text-primary: #1f2937; /* Gray 800 */
+  --text-secondary: #4b5563; /* Gray 600 */
+  --text-muted: #6b7280; /* Gray 500 */
+  --text-on-primary: #ffffff;
+
+  --border-color: #e5e7eb; /* Gray 200 */
+  --border-light-color: #f3f4f6; /* Gray 100 */
+
+  --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol";
+
+  --border-radius: 0.375rem; /* 6px */
+  --border-radius-lg: 0.5rem; /* 8px */
+  --box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* Category specific colors */
+  --category-food-bg: #fee2e2; /* Red 100 */
+  --category-food-text: #b91c1c; /* Red 700 */
+  --category-shopping-bg: #fef3c7; /* Amber 100 */
+  --category-shopping-text: #b45309; /* Amber 700 */
+  --category-transportation-bg: #dbeafe; /* Blue 100 */
+  --category-transportation-text: #1e40af; /* Blue 800 */
+  --category-entertainment-bg: #e0e7ff; /* Indigo 100 */
+  --category-entertainment-text: #3730a3; /* Indigo 800 */
+  --category-salary-bg: #d1fae5; /* Green 100 */
+  --category-salary-text: #047857; /* Green 700 */
+  --category-utilities-bg: #e0f2fe; /* Light Blue 100 */
+  --category-utilities-text: #075985; /* Light Blue 800 */
+  --category-healthcare-bg: #fce7f3; /* Pink 100 */
+  --category-healthcare-text: #9d174d; /* Pink 700 */
+  --category-freelance-bg: #f5f3ff; /* Violet 100 */
+  --category-freelance-text: #5b21b6; /* Violet 700 */
+  --category-investment-bg: #f0fdf4; /* Green 50 */
+  --category-investment-text: #15803d; /* Green 700 */
+  --category-other-bg: #f3f4f6; /* Gray 100 */
+  --category-other-text: #374151; /* Gray 700 */
+
+  /* Progress bar colors */
+  --progress-green: var(--success-color);
+  --progress-yellow: var(--warning-color);
+  --progress-red: var(--danger-color);
+}
+
+/* Reset & Global Styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+svg {
+  vertical-align: middle;
+}
+
+/* App Layout */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+  position: fixed; /* For fixed sidebar */
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 1.5rem 2rem;
+  margin-left: 260px; /* Account for fixed sidebar */
+  overflow-y: auto;
+}
+
+/* Sidebar Specifics */
+.sidebar-header {
+  margin-bottom: 1.5rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.logo-icon {
+  margin-right: 0.5rem;
+  color: var(--primary-color); /* Color for the SVG icon itself */
+}
+.logo-icon svg {
+  width: 24px; /* Increased size for better visibility */
+  height: 24px;
+}
+
+.nav-links {
+  flex-grow: 1;
+}
+
+.nav-section {
+  margin-bottom: 1.5rem;
+}
+
+.nav-section-title {
+  font-size: 0.75rem; /* 12px */
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 0.5rem 0.5rem;
+  letter-spacing: 0.05em;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 0.75rem; /* 10px 12px */
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.9375rem; /* 15px */
+  margin-bottom: 0.25rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+}
+.nav-link svg {
+  margin-right: 0.75rem;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted); /* Icon color */
+  transition: color 0.2s ease;
+}
+.nav-link:hover {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+}
+.nav-link:hover svg {
+  color: var(--primary-color);
+}
+.nav-link.active {
+  background-color: var(--primary-color);
+  color: var(--text-on-primary);
+}
+.nav-link.active svg {
+  color: var(--text-on-primary);
+}
+
+.nav-user {
+  margin-top: auto; /* Pushes to the bottom */
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light-color);
+  display: flex;
+  align-items: center;
+}
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: var(--text-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-right: 0.75rem;
+  font-size: 0.875rem; /* For initials */
+  overflow: hidden; /* Important for img */
+  background-size: cover; /* For background image if used */
+  background-position: center;
+}
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.user-info .user-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+.user-info .user-email {
+  font-size: 0.8125rem; /* 13px */
+  color: var(--text-muted);
+}
+
+/* Main Content Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.page-title {
+  font-size: 1.875rem; /* 30px */
+  font-weight: 700;
+  text-transform: capitalize; /* To match JS behavior */
+}
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 1rem; /* 10px 16px */
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  font-size: 0.875rem; /* 14px */
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease;
+  white-space: nowrap;
+}
+.btn svg {
+  margin-right: 0.5rem;
+}
+.btn-primary {
+  background-color: var(--primary-color);
+  color: var(--text-on-primary);
+  border-color: var(--primary-color);
+}
+.btn-primary:hover {
+  background-color: var(--primary-hover-color);
+  border-color: var(--primary-hover-color);
+}
+.btn-outline {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+.btn-outline:hover {
+  background-color: var(--border-light-color);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+.btn-danger {
+  background-color: var(--danger-color);
+  color: var(--text-on-primary);
+  border-color: var(--danger-color);
+}
+.btn-danger:hover {
+  background-color: #dc2626; /* Red 600 */
+  border-color: #dc2626;
+}
+.btn-small {
+  padding: 0.375rem 0.75rem; /* 6px 12px */
+  font-size: 0.8125rem; /* 13px */
+}
+.btn-small svg {
+  margin-right: 0.25rem;
+}
+
+/* Page Content & Grid */
+.page-content {
+  display: none; /* Hidden by default, JS shows active page */
+}
+.page-content.active-page {
+  display: block;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+.col-span-3 {
+  grid-column: span 3 / span 3;
+}
+.col-span-4 {
+  grid-column: span 4 / span 4;
+}
+.col-span-8 {
+  grid-column: span 8 / span 8;
+}
+.col-span-12 {
+  grid-column: span 12 / span 12;
+}
+
+/* Widgets */
+.widget {
+  background-color: var(--widget-bg);
+  padding: 1.5rem;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--box-shadow);
+}
+.widget-title {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.widget-balance .balance-title {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.widget-balance .balance-amount {
+  font-size: 1.875rem; /* 30px */
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+.widget-balance .balance-details {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Charts */
+.widget-chart .chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem; /* For spacing if actions were added */
+}
+.chart-container {
+  height: 300px; /* Default height, adjust as needed */
+  position: relative;
+}
+#cashFlowChart,
+#spendingTrendsChart {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Expenses by Category / Transactions List */
+.widget-expenses .expenses-list,
+#recentTransactionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.expense-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-light-color);
+}
+.expense-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.expense-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.expense-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.expense-info {
+  flex-grow: 1;
+}
+.expense-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.expense-date,
+.budget-details {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+.expense-amount {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.expense-amount.income {
+  color: var(--success-color);
+}
+.expense-amount.expense {
+  color: var(--danger-color);
+}
+
+/* Transaction actions (Edit/Delete buttons in list) */
+.transaction-actions {
+  margin-left: auto; /* Push buttons to the right */
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Budget progress bar in dashboard widget */
+.budget-bar {
+  height: 8px;
+  background-color: var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+.budget-progress {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.budget-bar-text {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Budgets Page Styles */
+.budgets-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+.budget-item {
+  background-color: var(--widget-bg); /* Use widget-bg for consistency */
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: var(--box-shadow);
+}
+.budget-item-main {
+  display: flex;
+  align-items: flex-start; /* Align icon with top of info */
+  gap: 1rem;
+}
+.budget-icon {
+  /* Same as .expense-icon, but for budgets context */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.budget-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.budget-info {
+  flex-grow: 1;
+}
+.budget-category-name {
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin-bottom: 0.25rem;
+}
+.budget-item-bar {
+  height: 10px;
+  background-color: var(--border-color);
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+.budget-item-progress {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+.budget-remaining {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.budget-remaining.overspent {
+  color: var(--danger-color);
+  font-weight: 500;
+}
+.budget-item-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto; /* Push to bottom if item flex-direction: column */
+  justify-content: flex-end;
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.6);
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.modal-content {
+  background-color: var(--modal-bg);
+  margin: 10vh auto; /* Vertically center a bit better */
+  padding: 2rem;
+  border-radius: var(--border-radius-lg);
+  width: 90%;
+  max-width: 500px;
+  box-shadow: var(--box-shadow-lg);
+  position: relative;
+  animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.close-button {
+  color: var(--text-muted);
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  font-size: 1.75rem; /* 28px */
+  font-weight: bold;
+  cursor: pointer;
+}
+.close-button:hover,
+.close-button:focus {
+  color: var(--text-primary);
+}
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* Form Styles */
+#transactionForm label,
+#budgetForm label,
+#accountForm label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+#transactionForm input[type="text"],
+#transactionForm input[type="number"], /* For HTML5 validation, actual input is text due to formatting */
+#transactionForm input[inputmode="numeric"], /* Styling for amount input */
+#transactionForm input[type="date"],
+#transactionForm select,
+#budgetForm input[type="text"], /* Added for budgetAmountInput */
+#budgetForm input[type="number"], /* Kept for any actual type=number inputs */
+#budgetForm select,
+#accountForm input[type="text"],
+#accountForm input[type="email"] {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: #ffffff;
+  font-size: 0.9375rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+#transactionForm input[type="text"]:focus,
+#transactionForm input[inputmode="numeric"]:focus,
+#transactionForm input[type="date"]:focus,
+#transactionForm select:focus,
+#budgetForm input[type="text"]:focus, /* Added for budgetAmountInput */
+#budgetForm input[type="number"]:focus, /* Kept for any actual type=number inputs */
+#budgetForm select:focus,
+#accountForm input[type="text"]:focus,
+#accountForm input[type="email"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color), 0.2); /* Simulating Tailwind's ring */
+}
+#transactionForm button[type="submit"],
+#budgetForm button[type="submit"],
+#accountForm button[type="submit"] {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
+/* Account Page Specifics */
+.account-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Default for smaller screens */
+  gap: 2rem;
+}
+@media (min-width: 768px) {
+  .account-settings-grid {
+    grid-template-columns: auto 1fr; /* Avatar on left, form on right */
+    align-items: flex-start;
+  }
+}
+.profile-picture-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.current-avatar-container {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background-color: var(--border-light-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  position: relative; /* For initials absolute positioning if needed */
+}
+.current-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.current-avatar-initials {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.avatar-upload-label {
+  display: inline-flex; /* To behave like a button */
+}
+.avatar-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+.profile-details-form .form-group {
+  margin-bottom: 1.25rem;
+}
+.profile-details-form .form-actions {
+  margin-top: 1.5rem;
+  text-align: right;
+}
+.profile-details-form .form-actions button {
+  width: auto; /* Don't make save button full width in this context */
+}
+.form-status-message {
+  font-size: 0.875rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius);
+  margin-top: 1rem;
+}
+.form-status-message.success {
+  background-color: #d1fae5; /* Green 100 */
+  color: #065f46; /* Green 700 */
+  border: 1px solid #a7f3d0; /* Green 200 */
+}
+.form-status-message.error {
+  background-color: #fee2e2; /* Red 100 */
+  color: #991b1b; /* Red 700 */
+  border: 1px solid #fecaca; /* Red 200 */
+}
+
+/* Category Icon Colors - using classes like category-icon-Food */
+.category-icon-Food {
+  background-color: var(--category-food-bg);
+  color: var(--category-food-text);
+}
+.category-icon-Shopping {
+  background-color: var(--category-shopping-bg);
+  color: var(--category-shopping-text);
+}
+.category-icon-Transportation {
+  background-color: var(--category-transportation-bg);
+  color: var(--category-transportation-text);
+}
+.category-icon-Entertainment {
+  background-color: var(--category-entertainment-bg);
+  color: var(--category-entertainment-text);
+}
+.category-icon-Salary {
+  background-color: var(--category-salary-bg);
+  color: var(--category-salary-text);
+}
+.category-icon-Utilities {
+  background-color: var(--category-utilities-bg);
+  color: var(--category-utilities-text);
+}
+.category-icon-Healthcare {
+  background-color: var(--category-healthcare-bg);
+  color: var(--category-healthcare-text);
+}
+.category-icon-Freelance {
+  background-color: var(--category-freelance-bg);
+  color: var(--category-freelance-text);
+}
+.category-icon-Investment {
+  background-color: var(--category-investment-bg);
+  color: var(--category-investment-text);
+}
+.category-icon-Other {
+  background-color: var(--category-other-bg);
+  color: var(--category-other-text);
+}
+
+/* Utility classes */
+.sidebar-toggle-btn {
+  display: none; /* Hidden by default */
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--text-primary); /* Or a more suitable color for an icon */
+}
+
+.sidebar-toggle-btn svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
+}
+
+.no-transactions,
+.no-budgets {
+  padding: 1rem 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Budgets Page Styles */
+.budgets-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+.budget-item {
+  background-color: var(--widget-bg); /* Use widget-bg for consistency */
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: var(--box-shadow);
+}
+/* ... (rest of budget styles) ... */
+
+/* Goals Page Styles */
+.goals-list {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(320px, 1fr)
+  ); /* Slightly wider for goals */
+  gap: 1.5rem;
+}
+
+.goal-item {
+  background-color: var(--widget-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.25rem; /* Slightly more padding */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: var(--box-shadow);
+}
+
+.goal-item-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.goal-icon {
+  /* Similar to budget/expense icon */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* Generic goal icon color, can be customized later */
+  background-color: var(
+    --category-investment-bg
+  ); /* Using investment color as a placeholder */
+  color: var(--category-investment-text);
+}
+.goal-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.goal-info {
+  flex-grow: 1;
+}
+
+.goal-name {
+  font-weight: 600;
+  font-size: 1.125rem; /* 18px */
+  margin-bottom: 0.375rem;
+  color: var(--text-primary);
+}
+
+.goal-amounts {
+  font-size: 0.875rem; /* 14px */
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+.goal-amounts .current {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.goal-amounts .target {
+  color: var(--text-muted);
+}
+
+.goal-progress-bar {
+  height: 10px;
+  background-color: var(--border-color);
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.goal-progress {
+  height: 100%;
+  background-color: var(--primary-color); /* Default progress color */
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+.goal-progress.completed {
+  background-color: var(--success-color);
+}
+
+.goal-target-date {
+  font-size: 0.8125rem; /* 13px */
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+.goal-target-date.overdue {
+  color: var(--danger-color);
+  font-weight: 500;
+}
+
+.goal-item-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto; /* Pushes to bottom */
+  justify-content: flex-end;
+}
+
+/* Form Styles for Goal Modal */
+#goalForm label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+#goalForm input[type="text"],
+#goalForm input[type="date"] {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: #ffffff;
+  font-size: 0.9375rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+#goalForm input[type="text"]:focus, /* Includes number inputs with text type for formatting */
+#goalForm input[type="date"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color), 0.2);
+}
+#goalForm button[type="submit"] {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
+/* Utility classes */
+/* ... */
+.no-goals {
+  padding: 1rem 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Categories Page Styles */
+.categories-management-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Stack on small screens */
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .categories-management-grid {
+    grid-template-columns: 1fr 1fr; /* Two columns for expense/income */
+  }
+}
+
+.category-type-section h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.categories-list-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.category-item-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background-color: var(--widget-bg);
+  border: 1px solid var(--border-light-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+.category-item-display.is-default {
+  /* Optional: Style default categories differently, e.g., less prominent delete */
+  background-color: var(--bg-color); /* Slightly different background */
+}
+
+.category-info-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.category-icon-display {
+  /* Similar to expense-icon */
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.category-icon-display svg {
+  width: 16px;
+  height: 16px;
+}
+
+.category-name-display {
+  font-weight: 500;
+}
+
+.category-actions-display {
+  display: flex;
+  gap: 0.5rem;
+}
+.category-actions-display .btn-delete-category[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.no-categories-message {
+  padding: 1rem;
+  color: var(--text-muted);
+  text-align: center;
+  background-color: var(--bg-color);
+  border-radius: var(--border-radius);
+}
+
+/* Form Styles for Category Modal (similar to other modals) */
+#categoryForm label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+#categoryForm input[type="text"],
+#categoryForm select {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: #ffffff;
+  font-size: 0.9375rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+#categoryForm input[type="text"]:focus,
+#categoryForm select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color), 0.2);
+}
+#categoryForm button[type="submit"] {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    /* Example: Make sidebar collapsible or hide on small screens */
+    /* For simplicity, we'll keep it fixed, but width could be reduced */
+    /* Or implement a toggle mechanism with JS */
+    position: fixed;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 2000; /* Above overlay */
+  }
+  .sidebar.open {
+    /* JS would add this class */
+    transform: translateX(0);
+  }
+  .main-content {
+    margin-left: 0; /* Full width when sidebar is hidden/collapsed */
+    padding: 1rem;
+  }
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .header-actions {
+    width: 100%;
+  }
+  .header-actions .btn {
+    flex-grow: 1; /* Make buttons take up space */
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr; /* Stack widgets on small screens */
+  }
+  .col-span-3,
+  .col-span-4,
+  .col-span-8,
+  .col-span-12 {
+    grid-column: span 1 / span 1;
+  }
+  .modal-content {
+    margin: 5vh auto;
+    width: 95%;
+  }
+
+  .sidebar-toggle-btn {
+    display: inline-flex; /* Show on smaller screens */
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-header {
+    position: relative; /* For potential absolute positioning of title if needed, or just for structure */
+  }
+
+  .page-title {
+    /* Adjust if button takes up space and title needs to be pushed */
+    /* Example: margin-left: 40px; if button is on the left and has width */
+  }
+}
