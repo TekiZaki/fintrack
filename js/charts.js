@@ -149,20 +149,19 @@ function updateCashFlowChart(transactions) {
 function updateSpendingTrendsChart(transactions, currentMonth, currentYear) {
   if (!spendingTrendsChartInstance) return;
 
-  const categories = [
-    "Food",
-    "Shopping",
-    "Transportation",
-    "Entertainment",
-    "Utilities",
-    "Other",
-  ];
+  // Get all defined expense category names dynamically
+  const expenseCategoryNames = getAllCategories() // from data.js
+    .filter((cat) => cat.type === "expense")
+    .map((cat) => cat.name)
+    .sort(); // Sort for consistent order
+
   const thisMonthData = {};
   const lastMonthData = {};
 
-  categories.forEach((cat) => {
-    thisMonthData[cat] = 0;
-    lastMonthData[cat] = 0;
+  // Initialize data for each expense category
+  expenseCategoryNames.forEach((categoryName) => {
+    thisMonthData[categoryName] = 0;
+    lastMonthData[categoryName] = 0;
   });
 
   const lastMonthDate = new Date(currentYear, currentMonth, 1);
@@ -171,37 +170,46 @@ function updateSpendingTrendsChart(transactions, currentMonth, currentYear) {
   const lastMonthYear = lastMonthDate.getFullYear();
 
   transactions.forEach((tx) => {
-    if (tx.type === "expense") {
+    const amount = parseFloat(tx.amount);
+    const txCategoryName = tx.category;
+
+    // Check if the transaction is an expense and its category is one of the defined expense categories
+    if (
+      tx.type === "expense" &&
+      expenseCategoryNames.includes(txCategoryName)
+    ) {
       const txDate = new Date(tx.date + "T00:00:00");
-      const category = categories.includes(tx.category) ? tx.category : "Other";
-      const amount = parseFloat(tx.amount);
 
       if (
         txDate.getMonth() === currentMonth &&
         txDate.getFullYear() === currentYear
       ) {
-        thisMonthData[category] += amount;
+        thisMonthData[txCategoryName] += amount;
       } else if (
         txDate.getMonth() === lastMonth &&
         txDate.getFullYear() === lastMonthYear
       ) {
-        lastMonthData[category] += amount;
+        lastMonthData[txCategoryName] += amount;
       }
     }
   });
 
-  spendingTrendsChartInstance.data.labels = categories;
+  spendingTrendsChartInstance.data.labels = expenseCategoryNames;
   spendingTrendsChartInstance.data.datasets = [
     {
       label: "Last Month",
-      data: categories.map((cat) => lastMonthData[cat]),
+      data: expenseCategoryNames.map(
+        (categoryName) => lastMonthData[categoryName]
+      ),
       backgroundColor: "rgba(99, 102, 241, 0.4)",
       borderColor: "rgba(99, 102, 241, 1)",
       borderWidth: 1,
     },
     {
       label: "This Month",
-      data: categories.map((cat) => thisMonthData[cat]),
+      data: expenseCategoryNames.map(
+        (categoryName) => thisMonthData[categoryName]
+      ),
       backgroundColor: "rgba(99, 102, 241, 1)",
       borderColor: "rgba(99, 102, 241, 1)",
       borderWidth: 1,

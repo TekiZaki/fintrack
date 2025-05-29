@@ -54,6 +54,15 @@ function initApp() {
     .getElementById("categoryForm")
     ?.addEventListener("submit", handleCategoryFormSubmit);
 
+  // Event listener for transaction type change to update categories in the modal
+  const transactionTypeSelect = document.getElementById("type");
+  if (transactionTypeSelect) {
+    transactionTypeSelect.addEventListener("change", (event) => {
+      const selectedType = event.target.value;
+      populateCategoryDropdown("category", selectedType); // populateCategoryDropdown is in ui.js
+    });
+  }
+
   // Event listener for account form submission
   const accountForm = document.getElementById("accountForm");
   if (accountForm) {

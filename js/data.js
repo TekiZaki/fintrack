@@ -4,49 +4,85 @@
 const USER_CATEGORIES_STORAGE_KEY = "userCategories";
 
 const DEFAULT_CATEGORIES_DATA = [
-  { name: "Food", type: "expense", iconKey: "Food", isDefault: true },
-  { name: "Shopping", type: "expense", iconKey: "Shopping", isDefault: true },
+  { name: "Food (expense)", type: "expense", iconKey: "Food", isDefault: true },
   {
-    name: "Transportation",
+    name: "Shopping (expense)",
+    type: "expense",
+    iconKey: "Shopping",
+    isDefault: true,
+  },
+  {
+    name: "Transportation (expense)",
     type: "expense",
     iconKey: "Transportation",
     isDefault: true,
   },
   {
-    name: "Entertainment",
+    name: "Entertainment (expense)",
     type: "expense",
     iconKey: "Entertainment",
     isDefault: true,
   },
-  { name: "Utilities", type: "expense", iconKey: "Utilities", isDefault: true },
   {
-    name: "Healthcare",
+    name: "Utilities (expense)",
+    type: "expense",
+    iconKey: "Utilities",
+    isDefault: true,
+  },
+  {
+    name: "Healthcare (expense)",
     type: "expense",
     iconKey: "Healthcare",
     isDefault: true,
   },
-  { name: "Other", type: "expense", iconKey: "Other", isDefault: true }, // Default expense 'Other'
-  { name: "Salary", type: "income", iconKey: "Salary", isDefault: true },
-  { name: "Freelance", type: "income", iconKey: "Freelance", isDefault: true },
   {
-    name: "Investment",
+    name: "Other (expense)",
+    type: "expense",
+    iconKey: "Other",
+    isDefault: true,
+  }, // Default expense 'Other'
+  {
+    name: "Salary (income)",
+    type: "income",
+    iconKey: "Salary",
+    isDefault: true,
+  },
+  {
+    name: "Freelance (income)",
+    type: "income",
+    iconKey: "Freelance",
+    isDefault: true,
+  },
+  {
+    name: "Investment (income)",
     type: "income",
     iconKey: "Investment",
     isDefault: true,
-  }, // Assuming default Investment is income
-  { name: "Other", type: "income", iconKey: "Other", isDefault: true }, // Default income 'Other'
+  },
+  {
+    name: "Investment (expense)",
+    type: "expense",
+    iconKey: "Investment",
+    isDefault: true,
+  },
+  {
+    name: "Other (income)",
+    type: "income",
+    iconKey: "Other",
+    isDefault: true,
+  }, // Default income 'Other'
 ];
 
 const DEFAULT_BUDGETS = {
   // Monthly budgets for typical expense categories
-  // These refer to the `name` property of default expense categories
-  Food: 2000000, // IDR 2,000,000
-  Shopping: 1000000, // IDR 1,000,000
-  Transportation: 500000, // IDR 500,000
-  Entertainment: 750000, // IDR 750,000
-  Utilities: 800000, // IDR 800,000 (listrik, air, internet, dll.)
-  Healthcare: 300000, // IDR 300,000
-  Other: 500000, // IDR 500,000 for other expenses
+  // These keys should now match the `name` property of default expense categories, including the suffix
+  "Entertainment (expense)": 750000, // IDR 750,000
+  "Food (expense)": 2000000, // IDR 2,000,000
+  "Healthcare (expense)": 300000, // IDR 300,000
+  "Shopping (expense)": 1000000, // IDR 1,000,000
+  "Transportation (expense)": 500000, // IDR 500,000
+  "Utilities (expense)": 800000, // IDR 800,000 (listrik, air, internet, dll.)
+  "Other (expense)": 500000, // IDR 500,000 for other expenses
 };
 
 // Define categories that are typically used for expense budgeting

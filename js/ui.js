@@ -239,18 +239,27 @@ const transactionIdInput = document.getElementById("transactionId");
 
 function openModal(transaction = null) {
   transactionForm.reset();
-  populateCategoryDropdown("category"); // Ensure categories are fresh, pass the ID of the select element
+  // transactionIdInput, modalTitle are fine
+
   if (transaction) {
     modalTitle.textContent = "Edit Transaction";
     transactionIdInput.value = transaction.id;
     document.getElementById("description").value = transaction.description;
     document.getElementById("amount").value = transaction.amount;
     document.getElementById("type").value = transaction.type;
+
+    // Populate categories based on the transaction's type FIRST
+    populateCategoryDropdown("category", transaction.type);
+    // THEN set the category value
     document.getElementById("category").value = transaction.category;
+
     document.getElementById("date").value = transaction.date;
   } else {
     modalTitle.textContent = "Add Transaction";
     transactionIdInput.value = "";
+    document.getElementById("type").value = "expense"; // Default to expense for new transactions
+    // Populate categories for the default type (expense)
+    populateCategoryDropdown("category", "expense");
     // Set date to today by default for new transactions
     document.getElementById("date").valueAsDate = new Date();
   }
