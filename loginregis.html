@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF--8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FinTrack - Authentication</title>
     <link rel="stylesheet" href="auth.css" />
@@ -23,6 +23,12 @@
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
         </svg>
         FinTrack
+      </div>
+
+      <!-- NEW: Online/Offline Status Indicator -->
+      <div id="statusIndicator" class="status-indicator offline">
+        <span class="status-dot"></span>
+        <span class="status-text">Offline</span>
       </div>
 
       <!-- Login Form -->
@@ -94,8 +100,8 @@
         </p>
       </div>
     </div>
-    <!-- auth.js needs access to data.js functions for initializing user data -->
-    <script src="js/data.js"></script>
+    <script src="js/config.js"></script>
+    <!-- LOAD FIRST -->
     <script src="auth.js"></script>
   </body>
 </html>

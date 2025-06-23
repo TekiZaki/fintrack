@@ -197,12 +197,14 @@ svg {
   color: var(--text-on-primary);
 }
 
+/* --- UPDATED: .nav-user and NEW: .status-indicator-sidebar --- */
 .nav-user {
   margin-top: auto; /* Pushes to the bottom */
   padding-top: 1rem;
   border-top: 1px solid var(--border-light-color);
   display: flex;
   align-items: center;
+  gap: 0.75rem; /* Gap between avatar and the info block */
 }
 .user-avatar {
   width: 40px;
@@ -214,26 +216,67 @@ svg {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  margin-right: 0.75rem;
   font-size: 0.875rem; /* For initials */
   overflow: hidden; /* Important for img */
   background-size: cover; /* For background image if used */
   background-position: center;
+  flex-shrink: 0;
 }
 .user-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+.user-details {
+  display: flex;
+  flex-direction: column;
+}
 .user-info .user-name {
   font-weight: 600;
   font-size: 0.9375rem;
   color: var(--text-primary);
+  line-height: 1.2;
 }
 .user-info .user-email {
   font-size: 0.8125rem; /* 13px */
   color: var(--text-muted);
+  line-height: 1.2;
 }
+
+.status-indicator-sidebar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--border-radius);
+  margin-top: 4px;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.status-indicator-sidebar .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+}
+
+.status-indicator-sidebar.offline {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+.status-indicator-sidebar.offline .status-dot {
+  background-color: #6b7280;
+}
+
+.status-indicator-sidebar.online {
+  background-color: #d1fae5;
+  color: #047857;
+}
+.status-indicator-sidebar.online .status-dot {
+  background-color: #10b981;
+}
+/* --- End of new styles --- */
 
 /* Main Content Header */
 .page-header {
