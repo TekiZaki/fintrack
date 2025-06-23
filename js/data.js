@@ -1,31 +1,28 @@
 // js/data.js
 
-// --- Authentication Related ---
-function getCurrentUserEmailForData() {
-  const email = localStorage.getItem("finTrackLoggedInUser"); // Key from auth.js
+// --- Authentication & User Identification ---
+function getCurrentUserEmail() {
+  // Uses the shared CONFIG from config.js
+  const email = localStorage.getItem(CONFIG.LOGGED_IN_USER_KEY);
   if (!email) {
-    console.error("User not logged in. Cannot perform data operation.");
-    // Attempt to redirect if critical data function called without auth
-    if (!window.location.pathname.includes("loginregis.html")) {
-      // window.location.href = 'loginregis.html'; // Commented out to prevent recursive redirects during init
-    }
-    return null;
+    console.warn(
+      "User not logged in. Cannot determine user for data operations."
+    );
   }
   return email;
 }
 
-// --- User-Scoped Data Storage ---
+// --- Core User-Scoped Data Storage (Local Cache) ---
 function getUserDataKey() {
-  const email = getCurrentUserEmailForData();
+  const email = getCurrentUserEmail();
   return email ? `userData_${email}` : null;
 }
 
 function getAllUserData() {
   const dataKey = getUserDataKey();
   if (!dataKey) {
-    // If no user logged in, return a structure that won't break callers immediately
-    console.warn("Attempted to get user data without a logged-in user.");
-    return getDefaultUserDataStructure(true); // Pass a flag to indicate it's a temporary default
+    console.warn("Attempted to get user data without a logged-in user key.");
+    return getDefaultUserDataStructure(true); // isTemporary = true
   }
 
   const rawData = localStorage.getItem(dataKey);
@@ -34,13 +31,13 @@ function getAllUserData() {
       return JSON.parse(rawData);
     } catch (e) {
       console.error("Error parsing user data from localStorage:", e);
-      // Fallback to default if data is corrupted
       const defaultData = getDefaultUserDataStructure();
-      saveAllUserData(defaultData); // Attempt to fix by saving defaults
+      saveAllUserData(defaultData);
       return defaultData;
     }
   }
-  // If no data for user, initialize with defaults
+
+  console.log(`No local data for ${dataKey}, initializing with defaults.`);
   const defaultData = getDefaultUserDataStructure();
   saveAllUserData(defaultData);
   return defaultData;
@@ -49,17 +46,17 @@ function getAllUserData() {
 function saveAllUserData(userData) {
   const dataKey = getUserDataKey();
   if (!dataKey) {
-    console.warn("Attempted to save user data without a logged-in user.");
+    console.error("CRITICAL: Attempted to save user data without a user key.");
     return;
   }
   localStorage.setItem(dataKey, JSON.stringify(userData));
 }
 
 function getDefaultUserDataStructure(isTemporary = false) {
-  const userEmail = getCurrentUserEmailForData();
+  const userEmail = getCurrentUserEmail();
   return {
     profile: {
-      name: isTemporary ? "Guest" : "User", // Name will be set during registration properly
+      name: isTemporary ? "Guest" : "New User",
       email: userEmail || (isTemporary ? "" : "user@example.com"),
       avatar: null,
     },
@@ -70,7 +67,36 @@ function getDefaultUserDataStructure(isTemporary = false) {
   };
 }
 
-// --- Category Management (Now User-Scoped) ---
+// --- Sub-data 'Getters' and 'Savers' ---
+// All the specific getter/setter functions (getTransactions, saveTransactions, etc.)
+// remain exactly the same as before and do not need to be changed.
+// -- Transactions --
+function getTransactions() {
+  return getAllUserData().transactions || [];
+}
+function saveTransactions(transactions) {
+  const userData = getAllUserData();
+  userData.transactions = transactions;
+  saveAllUserData(userData);
+}
+function addTransaction(transaction) {
+  const transactions = getTransactions();
+  transactions.push({ ...transaction, id: Date.now().toString() });
+  saveTransactions(transactions);
+}
+function updateTransaction(id, updatedTransaction) {
+  let transactions = getTransactions();
+  transactions = transactions.map((tx) =>
+    tx.id === id ? { ...tx, ...updatedTransaction, id } : tx
+  );
+  saveTransactions(transactions);
+}
+function deleteTransaction(id) {
+  let transactions = getTransactions().filter((tx) => tx.id !== id);
+  saveTransactions(transactions);
+}
+
+// -- Categories --
 const DEFAULT_CATEGORIES_DATA = [
   { name: "Food (expense)", type: "expense", iconKey: "Food", isDefault: true },
   {
@@ -137,16 +163,13 @@ const DEFAULT_CATEGORIES_DATA = [
 ];
 
 function getAllCategories() {
-  const userData = getAllUserData();
-  return userData.categories || [];
+  return getAllUserData().categories || [];
 }
-
 function saveAllCategories(categories) {
   const userData = getAllUserData();
   userData.categories = categories;
   saveAllUserData(userData);
 }
-
 function addCategory(newCategory) {
   const categories = getAllCategories();
   const existing = categories.find(
@@ -169,17 +192,13 @@ function addCategory(newCategory) {
   saveAllCategories(categories);
   return true;
 }
-
 function deleteCategory(categoryName, categoryType) {
   let categories = getAllCategories();
   const categoryIndex = categories.findIndex(
     (c) => c.name === categoryName && c.type === categoryType && !c.isDefault
   );
-
   if (categoryIndex === -1) {
-    alert(
-      "Cannot delete default categories or category not found for deletion."
-    );
+    alert("Cannot delete default categories or category not found.");
     return false;
   }
   categories.splice(categoryIndex, 1);
@@ -187,39 +206,7 @@ function deleteCategory(categoryName, categoryType) {
   return true;
 }
 
-// --- Transaction Functions (Now User-Scoped) ---
-function getTransactions() {
-  const userData = getAllUserData();
-  return userData.transactions || [];
-}
-
-function saveTransactions(transactions) {
-  const userData = getAllUserData();
-  userData.transactions = transactions;
-  saveAllUserData(userData);
-}
-
-function addTransaction(transaction) {
-  const transactions = getTransactions();
-  transactions.push({ ...transaction, id: Date.now().toString() });
-  saveTransactions(transactions);
-}
-
-function updateTransaction(id, updatedTransaction) {
-  let transactions = getTransactions();
-  transactions = transactions.map((tx) =>
-    tx.id === id ? { ...tx, ...updatedTransaction, id } : tx
-  );
-  saveTransactions(transactions);
-}
-
-function deleteTransaction(id) {
-  let transactions = getTransactions();
-  transactions = transactions.filter((tx) => tx.id !== id);
-  saveTransactions(transactions);
-}
-
-// --- Budget Functions (Now User-Scoped) ---
+// -- Budgets --
 const DEFAULT_BUDGETS = {
   "Entertainment (expense)": 750000,
   "Food (expense)": 2000000,
@@ -229,75 +216,55 @@ const DEFAULT_BUDGETS = {
   "Utilities (expense)": 800000,
   "Other (expense)": 500000,
 };
-
 function getBudgets() {
-  const userData = getAllUserData();
-  return userData.budgets || {};
+  return getAllUserData().budgets || {};
 }
-
 function saveBudgets(budgets) {
   const userData = getAllUserData();
   userData.budgets = budgets;
   saveAllUserData(userData);
 }
 
-// --- User Profile Functions (Now User-Scoped) ---
-function getUserProfile() {
+// -- Goals --
+function getGoals() {
+  return getAllUserData().goals || [];
+}
+function saveGoals(goals) {
   const userData = getAllUserData();
-  // Ensure profile always has email, even if it's from the logged-in key
-  const profile = userData.profile || {
-    name: "User",
-    email: getCurrentUserEmailForData(),
-    avatar: null,
-  };
+  userData.goals = goals;
+  saveAllUserData(userData);
+}
+function addGoal(goal) {
+  const goals = getGoals();
+  goals.push({ ...goal, id: Date.now().toString() });
+  saveGoals(goals);
+}
+function updateGoal(id, updatedGoal) {
+  let goals = getGoals().map((g) =>
+    g.id === id ? { ...g, ...updatedGoal, id } : g
+  );
+  saveGoals(goals);
+}
+function deleteGoal(id) {
+  let goals = getGoals().filter((g) => g.id !== id);
+  saveGoals(goals);
+}
+
+// -- User Profile --
+function getUserProfile() {
+  const profile = getAllUserData().profile || {};
   if (!profile.email) {
-    profile.email = getCurrentUserEmailForData(); // Fallback if email somehow missing in stored profile
+    profile.email = getCurrentUserEmail();
   }
   return profile;
 }
-
 function saveUserProfile(profileData) {
   const userData = getAllUserData();
   userData.profile = profileData;
   saveAllUserData(userData);
 }
 
-// --- Goal Functions (Now User-Scoped) ---
-function getGoals() {
-  const userData = getAllUserData();
-  return userData.goals || [];
-}
-
-function saveGoals(goals) {
-  const userData = getAllUserData();
-  userData.goals = goals;
-  saveAllUserData(userData);
-}
-
-function addGoal(goal) {
-  const goals = getGoals();
-  goals.push({ ...goal, id: Date.now().toString() });
-  saveGoals(goals);
-}
-
-function updateGoal(id, updatedGoal) {
-  let goals = getGoals();
-  goals = goals.map((g) => (g.id === id ? { ...g, ...updatedGoal, id } : g));
-  saveGoals(goals);
-}
-
-function deleteGoal(id) {
-  let goals = getGoals();
-  goals = goals.filter((g) => g.id !== id);
-  saveGoals(goals);
-}
-
-// --- Helper functions for UI (use scoped data now) ---
-function getExpenseCategoriesForBudgeting() {
-  const allCats = getAllCategories();
-  return allCats.filter((cat) => cat.type === "expense").map((cat) => cat.name);
-}
-
+// --- Helper functions for UI (no changes needed) ---
 const ICONS = {
   Food: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>`,
   Shopping: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>`,
@@ -312,6 +279,11 @@ const ICONS = {
 };
 
 const GOAL_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L9 5H5v5l4 4-4 4v5h4l3 3 3-3h4v-5l-4-4 4-4V5h-4L12 2z"></path><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>`;
+
+function getExpenseCategoriesForBudgeting() {
+  const allCats = getAllCategories();
+  return allCats.filter((cat) => cat.type === "expense").map((cat) => cat.name);
+}
 
 function getCategoryIcon(categoryName, categoryType = null) {
   const categories = getAllCategories();

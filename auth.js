@@ -1,17 +1,14 @@
 // auth.js
 
-const USERS_STORAGE_KEY = "finTrackUsers";
-const LOGGED_IN_USER_KEY = "finTrackLoggedInUser";
-
+// --- DOM Event Listeners (No changes in this part) ---
 document.addEventListener("DOMContentLoaded", () => {
   if (
-    localStorage.getItem(LOGGED_IN_USER_KEY) &&
+    localStorage.getItem(CONFIG.AUTH_TOKEN_KEY) &&
     window.location.pathname.includes("loginregis.html")
   ) {
     window.location.href = "index.html";
     return;
   }
-
   const loginForm = document.getElementById("loginForm");
   const registerForm = document.getElementById("registerForm");
   const showRegisterLink = document.getElementById("showRegister");
@@ -44,44 +41,49 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (loginForm) {
-    loginForm.addEventListener("submit", (e) => {
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("loginEmail").value;
       const password = document.getElementById("loginPassword").value;
-      loginUser(email, password);
+      await loginUser(email, password);
     });
   }
 
   if (registerForm) {
-    registerForm.addEventListener("submit", (e) => {
+    registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = document.getElementById("registerName").value;
       const email = document.getElementById("registerEmail").value;
       const password = document.getElementById("registerPassword").value;
-      registerUser(name, email, password);
+      await registerUser(name, email, password);
     });
   }
+
+  const updateOnlineStatus = (online) => {
+    document.querySelectorAll("#statusIndicator").forEach((indicator) => {
+      const statusText = indicator.querySelector(".status-text");
+      if (online) {
+        indicator.classList.remove("offline");
+        indicator.classList.add("online");
+        if (statusText) statusText.textContent = "Online";
+      } else {
+        indicator.classList.remove("online");
+        indicator.classList.add("offline");
+        if (statusText) statusText.textContent = "Offline";
+      }
+    });
+  };
+  window.addEventListener("online", () => updateOnlineStatus(true));
+  window.addEventListener("offline", () => updateOnlineStatus(false));
+  updateOnlineStatus(navigator.onLine);
 });
 
-function getSystemUsers() {
-  const users = localStorage.getItem(USERS_STORAGE_KEY);
-  return users ? JSON.parse(users) : [];
-}
+// --- Core Authentication Functions ---
 
-function saveSystemUsers(users) {
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-}
-
-function registerUser(name, email, password) {
-  const users = getSystemUsers();
+async function registerUser(name, email, password) {
   const registerErrorMessage = document.getElementById("registerErrorMessage");
   registerErrorMessage.style.display = "none";
 
-  if (users.find((user) => user.email === email)) {
-    registerErrorMessage.textContent = "User with this email already exists.";
-    registerErrorMessage.style.display = "block";
-    return;
-  }
   if (!name || !email || !password) {
     registerErrorMessage.textContent = "All fields are required.";
     registerErrorMessage.style.display = "block";
@@ -94,66 +96,97 @@ function registerUser(name, email, password) {
     return;
   }
 
-  // WARNING: Storing plain text password. In a real app, HASH the password.
-  users.push({ name, email, password });
-  saveSystemUsers(users);
-
-  localStorage.setItem(LOGGED_IN_USER_KEY, email);
-
-  // Initialize user-specific data using functions from data.js
-  // getAllUserData() will create and save default data if it doesn't exist.
-  const initialUserData = getAllUserData(); // from data.js
-  // Ensure the profile within this new user's data reflects their registration details
-  if (initialUserData && initialUserData.profile) {
-    initialUserData.profile.name = name;
-    initialUserData.profile.email = email; // Should match the login email
-    saveAllUserData(initialUserData); // from data.js
-  } else {
-    // This case should ideally not happen if getAllUserData initializes correctly
-    console.error("Failed to initialize user profile data.");
+  try {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/auth/register.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(
+        result.message || `HTTP error! status: ${response.status}`
+      );
+    }
+    console.log("Registration successful! Logging in...");
+    await loginUser(email, password);
+  } catch (error) {
+    console.error("Registration failed:", error);
+    registerErrorMessage.textContent = error.message;
+    registerErrorMessage.style.display = "block";
   }
-
-  window.location.href = "index.html";
 }
 
-function loginUser(email, password) {
-  const users = getSystemUsers();
-  const user = users.find((u) => u.email === email);
+async function loginUser(email, password) {
   const loginErrorMessage = document.getElementById("loginErrorMessage");
   loginErrorMessage.style.display = "none";
 
-  // WARNING: Comparing plain text password.
-  if (user && user.password === password) {
-    localStorage.setItem(LOGGED_IN_USER_KEY, email);
+  try {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/auth/login.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(
+        result.message || `HTTP error! status: ${response.status}`
+      );
+    }
+
+    // --- CRUCIAL FIX STARTS HERE ---
+    // 1. Store the token and user's email identifier.
+    localStorage.setItem(CONFIG.AUTH_TOKEN_KEY, result.token);
+    localStorage.setItem(CONFIG.LOGGED_IN_USER_KEY, result.user.email);
+
+    // 2. Pre-populate localStorage with correct user data to prevent the 'New User' bug.
+    // This creates the initial data cache that the main app will read on load.
+    const initialUserData = {
+      profile: result.user, // Use the profile directly from the login response
+      // For a brand new user, these will be empty until the first sync.
+      // For a returning user, the sync will fill them in. This is fine.
+      categories: [],
+      transactions: [],
+      budgets: {},
+      goals: [],
+    };
+    const userDataKey = `userData_${result.user.email}`;
+    localStorage.setItem(userDataKey, JSON.stringify(initialUserData));
+    // --- CRUCIAL FIX ENDS HERE ---
+
     window.location.href = "index.html";
-  } else {
-    loginErrorMessage.textContent = "Invalid email or password.";
+  } catch (error) {
+    console.error("Login failed:", error);
+    loginErrorMessage.textContent = error.message;
     loginErrorMessage.style.display = "block";
   }
 }
 
+// The rest of auth.js (logoutUser, checkAuth, getCurrentUserEmail) remains unchanged.
 function logoutUser() {
-  localStorage.removeItem(LOGGED_IN_USER_KEY);
+  const userEmail = getCurrentUserEmail();
+  localStorage.removeItem(CONFIG.LOGGED_IN_USER_KEY);
+  localStorage.removeItem(CONFIG.AUTH_TOKEN_KEY);
+  if (userEmail) {
+    localStorage.removeItem(`userData_${userEmail}`);
+  }
   window.location.href = "loginregis.html";
 }
 
 function checkAuth() {
-  const loggedInUser = localStorage.getItem(LOGGED_IN_USER_KEY);
+  const token = localStorage.getItem(CONFIG.AUTH_TOKEN_KEY);
   const isLoginPage = window.location.pathname.includes("loginregis.html");
-
-  if (!loggedInUser && !isLoginPage) {
+  if (!token && !isLoginPage) {
     window.location.href = "loginregis.html";
     return false;
   }
-  if (loggedInUser && isLoginPage) {
+  if (token && isLoginPage) {
     window.location.href = "index.html";
-    // This return true is a bit misleading as it causes a redirect.
-    // The primary purpose is to gate access to index.html.
     return true;
   }
-  return !!loggedInUser;
+  return !!token;
 }
 
 function getCurrentUserEmail() {
-  return localStorage.getItem(LOGGED_IN_USER_KEY);
+  return localStorage.getItem(CONFIG.LOGGED_IN_USER_KEY);
 }
