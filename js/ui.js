@@ -264,23 +264,65 @@ function closeModal() {
   transactionModal.style.display = "none";
 }
 
+/**
+ * Populates the category dropdown in the budget modal.
+ * Filters for 'expense' categories and sorts them.
+ * @param {string|null} selectedCategoryKey - The category to pre-select (if any).
+ */
+function populateBudgetCategoryDropdown(selectedCategoryKey = null) {
+  const categorySelect = document.getElementById("budgetCategorySelect");
+  if (!categorySelect) {
+    console.error("Budget category select dropdown not found.");
+    return;
+  }
+  categorySelect.innerHTML = ""; // Clear existing options
+
+  const allCategories = getAllCategories(); // From data.js
+  const expenseCategories = allCategories
+    .filter((cat) => cat.type === "expense")
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (expenseCategories.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No expense categories available";
+    option.disabled = true;
+    categorySelect.appendChild(option);
+    return;
+  }
+
+  expenseCategories.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category.name;
+    option.textContent = category.name;
+    if (selectedCategoryKey && category.name === selectedCategoryKey) {
+      option.selected = true;
+    }
+    categorySelect.appendChild(option);
+  });
+}
+
 function openBudgetModal(categoryKey = null, amount = null) {
   const form = document.getElementById("budgetForm");
   const categorySelect = document.getElementById("budgetCategorySelect");
   form.reset();
   document.getElementById("editingBudgetCategoryKey").value = categoryKey || "";
-  populateBudgetCategoryDropdown(categoryKey);
+  populateBudgetCategoryDropdown(categoryKey); // Call the new function
 
   if (categoryKey) {
     document.getElementById("budgetModalTitle").textContent = "Edit Budget";
-    categorySelect.value = categoryKey;
+    // The populateBudgetCategoryDropdown function now handles pre-selection.
+    // We still need to disable it if a categoryKey is provided (editing mode).
+    if (categorySelect.querySelector(`option[value="${categoryKey}"]`)) {
+        categorySelect.value = categoryKey; // Ensure the value is set if the option exists
+    }
     categorySelect.disabled = true;
     document.getElementById("budgetAmountInput").value = new Intl.NumberFormat(
       "id-ID"
     ).format(amount);
   } else {
     document.getElementById("budgetModalTitle").textContent = "Add New Budget";
-    categorySelect.disabled = false;
+    categorySelect.disabled = false; // Ensure it's enabled for new budgets
   }
   budgetModal.style.display = "block";
 }
