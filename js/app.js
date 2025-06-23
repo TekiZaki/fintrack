@@ -82,7 +82,6 @@ async function syncWithServer() {
   try {
     const allLocalData = getAllUserData();
 
-    // --- FIX STARTS HERE ---
     // Create a payload for syncing that EXCLUDES the large profile data.
     // The profile is synced separately via its own dedicated endpoint.
     const syncPayload = {
@@ -91,24 +90,24 @@ async function syncWithServer() {
       budgets: allLocalData.budgets,
       goals: allLocalData.goals,
     };
-    // --- FIX ENDS HERE ---
 
-    // FIX: Corrected endpoint path and use the new, smaller payload
     const uploadResponse = await apiFetch("/data/sync.php", {
       method: "POST",
-      body: JSON.stringify(syncPayload), // Use the smaller syncPayload
+      body: JSON.stringify(syncPayload),
     });
     if (!uploadResponse.ok) throw new Error("Data upload failed.");
     console.log("Local data successfully pushed to server.");
 
-    // The rest of the function remains the same, as the GET request should
-    // still return the complete master data, including the correct profile.
     const downloadResponse = await apiFetch("/data/sync.php");
     if (!downloadResponse.ok) throw new Error("Data download failed.");
     const serverData = await downloadResponse.json();
     console.log("Master data successfully downloaded from server.");
 
-    saveAllUserData(serverData);
+    // Preserve the local profile, as it's managed by a separate endpoint
+    // and might be more up-to-date immediately after a profile change.
+    const localProfile = getUserProfile(); // from data.js
+    const mergedData = { ...serverData, profile: localProfile };
+    saveAllUserData(mergedData); // from data.js
 
     updateOnlineStatusUI(true);
     refreshAllUI();
