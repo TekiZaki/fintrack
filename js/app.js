@@ -296,9 +296,12 @@ async function handleBudgetFormSubmit(event) {
     alert("Please select a category and enter a valid, non-negative amount.");
     return;
   }
-  const budgets = getBudgets();
-  budgets[category] = amount;
-  saveBudgets(budgets);
+  let currentBudgets = getBudgets();
+  const updatedBudgets = {
+    ...currentBudgets,
+    [category]: amount
+  };
+  saveBudgets(updatedBudgets);
   closeBudgetModal();
   refreshCurrentPageContent();
   await syncWithServer();
