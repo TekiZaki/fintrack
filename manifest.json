@@ -1,0 +1,22 @@
+{
+  "name": "FinTrack",
+  "short_name": "FinTrack",
+  "description": "Pelacak Keuangan Pribadi",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#1f2937",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "fintrack.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "fintrack-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "orientation": "portrait"
+}

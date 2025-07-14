@@ -2,6 +2,7 @@
 
 // --- DOM Event Listeners (No changes in this part) ---
 document.addEventListener("DOMContentLoaded", () => {
+  // Check auth early for login/registration page redirection
   if (
     localStorage.getItem(CONFIG.AUTH_TOKEN_KEY) &&
     window.location.pathname.includes("loginregis.html")
@@ -134,25 +135,10 @@ async function loginUser(email, password) {
       );
     }
 
-    // --- CRUCIAL FIX STARTS HERE ---
-    // 1. Store the token and user's email identifier.
-    localStorage.setItem(CONFIG.AUTH_TOKEN_KEY, result.token);
-    localStorage.setItem(CONFIG.LOGGED_IN_USER_KEY, result.user.email);
+    const responseData = result.data;
 
-    // 2. Pre-populate localStorage with correct user data to prevent the 'New User' bug.
-    // This creates the initial data cache that the main app will read on load.
-    const initialUserData = {
-      profile: result.user, // Use the profile directly from the login response
-      // For a brand new user, these will be empty until the first sync.
-      // For a returning user, the sync will fill them in. This is fine.
-      categories: [],
-      transactions: [],
-      budgets: {},
-      goals: [],
-    };
-    const userDataKey = `userData_${result.user.email}`;
-    localStorage.setItem(userDataKey, JSON.stringify(initialUserData));
-    // --- CRUCIAL FIX ENDS HERE ---
+    localStorage.setItem(CONFIG.AUTH_TOKEN_KEY, responseData.token); // <-- USE responseData.token
+    localStorage.setItem(CONFIG.LOGGED_IN_USER_KEY, responseData.user.email); // <-- USE responseData.user.email
 
     window.location.href = "index.html";
   } catch (error) {
@@ -164,12 +150,11 @@ async function loginUser(email, password) {
 
 // The rest of auth.js (logoutUser, checkAuth, getCurrentUserEmail) remains unchanged.
 function logoutUser() {
-  const userEmail = getCurrentUserEmail();
+  const userEmail = getCurrentUserEmail(); // from auth.js, but also used by data.js
   localStorage.removeItem(CONFIG.LOGGED_IN_USER_KEY);
   localStorage.removeItem(CONFIG.AUTH_TOKEN_KEY);
-  if (userEmail) {
-    localStorage.removeItem(`userData_${userEmail}`);
-  }
+  // No need to remove `userData_${userEmail}` key, as it's no longer used for core data.
+  // The in-memory cache in data.js will be cleared implicitly by reload or next login.
   window.location.href = "loginregis.html";
 }
 
