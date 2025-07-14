@@ -13,21 +13,13 @@ document.addEventListener("DOMContentLoaded", () => {
   initApp();
 });
 
-function initApp() {
+async function initApp() {
   setupOnlineStatusListeners();
-
-  const userProfile = getUserProfile(); // from data.js
-  if (userProfile && userProfile.email) {
-    updateSidebarUserDisplay(userProfile); // from ui.js
-  } else {
-    console.error("User profile not found locally. Logging out.");
-    logoutUser(); // from auth.js
-    return;
-  }
+  updateSidebarUserDisplay(getUserProfile()); // Initial display from default/cached profile
 
   setupEventListeners();
-  showPage(currentPage);
-  checkInitialOnlineStatus();
+  showPage(currentPage); // Shows the page content with initial data
+  await checkInitialOnlineStatus(); // Fetches and updates data from server
 }
 
 // --- Online/Offline & Synchronization Logic ---
@@ -36,11 +28,10 @@ function setupOnlineStatusListeners() {
   window.addEventListener("offline", () => handleConnectionChange(false));
 }
 
-// MODIFIED: Streamlined initial check
 async function checkInitialOnlineStatus() {
   updateOnlineStatusUI(navigator.onLine);
   if (navigator.onLine) {
-    await syncWithServer();
+    await syncWithServer(); // Pull all data from server on startup
   }
 }
 
@@ -50,7 +41,7 @@ async function handleConnectionChange(online) {
 
   if (justCameOnline) {
     console.log("Connection restored. Triggering server sync.");
-    await syncWithServer();
+    await syncWithServer(); // Sync all data from server
   }
 }
 
@@ -72,46 +63,23 @@ function updateOnlineStatusUI(online) {
 
 async function syncWithServer() {
   if (!navigator.onLine) {
-    // Use navigator.onLine as the primary check
     console.log("Offline. Skipping server sync.");
     updateOnlineStatusUI(false);
     return;
   }
 
-  console.log("Attempting to sync with server...");
+  console.log("Attempting to pull master data from server...");
   try {
-    const allLocalData = getAllUserData();
-
-    // Create a payload for syncing that EXCLUDES the large profile data.
-    // The profile is synced separately via its own dedicated endpoint.
-    const syncPayload = {
-      categories: allLocalData.categories,
-      transactions: allLocalData.transactions,
-      budgets: allLocalData.budgets,
-      goals: allLocalData.goals,
-    };
-
-    const uploadResponse = await apiFetch("/data/sync.php", {
-      method: "POST",
-      body: JSON.stringify(syncPayload),
-    });
-    if (!uploadResponse.ok) throw new Error("Data upload failed.");
-    console.log("Local data successfully pushed to server.");
-
-    const downloadResponse = await apiFetch("/data/sync.php");
+    const downloadResponse = await apiFetch("/data/index.php?type=all");
     if (!downloadResponse.ok) throw new Error("Data download failed.");
     const serverData = await downloadResponse.json();
-    console.log("Master data successfully downloaded from server.");
 
-    // Preserve the local profile, as it's managed by a separate endpoint
-    // and might be more up-to-date immediately after a profile change.
-    const localProfile = getUserProfile(); // from data.js
-    const mergedData = { ...serverData, profile: localProfile };
-    saveAllUserData(mergedData); // from data.js
+    // Set the appData cache directly with server's master data
+    setAllUserData(serverData.data); // From data.js, sets the in-memory cache
 
     updateOnlineStatusUI(true);
     refreshAllUI();
-    console.log("Sync complete. Local data is now up-to-date.");
+    console.log("Sync complete. Local data cache is now up-to-date.");
   } catch (error) {
     console.error("Server sync failed:", error.message);
     if (error.message !== "Unauthorized") {
@@ -132,7 +100,6 @@ async function apiFetch(endpoint, options = {}) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  // Use CONFIG.API_BASE_URL which is ".../api"
   const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
@@ -149,8 +116,7 @@ async function apiFetch(endpoint, options = {}) {
 
 // --- UI & Event Listener Setup ---
 function refreshAllUI() {
-  const userProfile = getUserProfile();
-  updateSidebarUserDisplay(userProfile);
+  updateSidebarUserDisplay(getUserProfile()); // from ui.js
   refreshCurrentPageContent();
   initCharts();
 }
@@ -252,9 +218,9 @@ function showPage(pageId) {
     targetPage.classList.add("active-page");
     currentPage = pageId;
     document.getElementById("currentPageTitle").textContent = pageId;
-    refreshCurrentPageContent();
+    refreshCurrentPageContent(); // Ensure current page content is fresh
   } else {
-    showPage("dashboard");
+    showPage("dashboard"); // Fallback to dashboard
   }
 }
 
@@ -274,14 +240,17 @@ async function handleFormSubmit(event) {
     alert("Please enter a valid positive number for the amount.");
     return;
   }
+  let success = false;
   if (id) {
-    updateTransaction(id, transaction);
+    success = await updateTransaction(id, transaction); // from data.js
   } else {
-    addTransaction(transaction);
+    success = await addTransaction(transaction); // from data.js
   }
-  closeModal();
-  refreshCurrentPageContent();
-  await syncWithServer();
+  if (success) {
+    closeModal();
+    // After any data modification, refresh data from server to ensure consistency
+    await syncWithServer();
+  }
 }
 
 async function handleBudgetFormSubmit(event) {
@@ -296,15 +265,16 @@ async function handleBudgetFormSubmit(event) {
     alert("Please select a category and enter a valid, non-negative amount.");
     return;
   }
-  let currentBudgets = getBudgets();
+  let currentBudgets = getBudgets(); // from data.js (in-memory cache)
   const updatedBudgets = {
     ...currentBudgets,
-    [category]: amount
+    [category]: amount,
   };
-  saveBudgets(updatedBudgets);
-  closeBudgetModal();
-  refreshCurrentPageContent();
-  await syncWithServer();
+  const success = await saveBudgets(updatedBudgets); // from data.js
+  if (success) {
+    closeBudgetModal();
+    await syncWithServer();
+  }
 }
 
 async function handleGoalFormSubmit(event) {
@@ -324,14 +294,16 @@ async function handleGoalFormSubmit(event) {
     alert("Please enter a goal name and a valid positive target amount.");
     return;
   }
+  let success = false;
   if (id) {
-    updateGoal(id, goal);
+    success = await updateGoal(id, goal); // from data.js
   } else {
-    addGoal(goal);
+    success = await addGoal(goal); // from data.js
   }
-  closeGoalModal();
-  refreshCurrentPageContent();
-  await syncWithServer();
+  if (success) {
+    closeGoalModal();
+    await syncWithServer();
+  }
 }
 
 async function handleCategoryFormSubmit(event) {
@@ -344,67 +316,79 @@ async function handleCategoryFormSubmit(event) {
     alert("Category name cannot be empty.");
     return;
   }
-  if (addCategory({ name: categoryName, type: categoryType })) {
+  // No need to check for existing categories here, `addCategory` will do it
+  const success = await addCategory({
+    name: categoryName,
+    type: categoryType,
+    iconKey: "Other", // Default icon for new categories
+    isDefault: false,
+  }); // from data.js
+  if (success) {
     closeCategoryModal();
-    refreshCurrentPageContent();
-    refreshCategoryDependentUIData();
     await syncWithServer();
   }
 }
 
 async function handleTransactionAction(id, action) {
+  let success = false;
   if (action === "edit") {
-    const tx = getTransactions().find((t) => t.id === id);
+    const tx = getTransactions().find((t) => t.id === id); // from data.js
     if (tx) openModal(tx);
   } else if (action === "delete") {
     if (confirm("Are you sure you want to delete this transaction?")) {
-      deleteTransaction(id);
-      refreshCurrentPageContent();
-      await syncWithServer();
+      success = await deleteTransaction(id); // from data.js
     }
+  }
+  if (success) {
+    await syncWithServer();
   }
 }
 
 async function handleBudgetAction(category, action, amount = null) {
+  let success = false;
   if (action === "edit") {
     openBudgetModal(category, amount);
   } else if (action === "delete") {
     if (
       confirm(`Are you sure you want to delete the budget for "${category}"?`)
     ) {
-      const budgets = getBudgets();
+      // Modify the in-memory budget object and then save it to server
+      const budgets = getBudgets(); // from data.js
       delete budgets[category];
-      saveBudgets(budgets);
-      refreshCurrentPageContent();
-      await syncWithServer();
+      success = await saveBudgets(budgets); // from data.js
     }
+  }
+  if (success) {
+    await syncWithServer();
   }
 }
 
 async function handleGoalAction(id, action) {
+  let success = false;
   if (action === "edit") {
-    const goal = getGoals().find((g) => g.id === id);
+    const goal = getGoals().find((g) => g.id === id); // from data.js
     if (goal) openGoalModal(goal);
   } else if (action === "delete") {
     if (confirm("Are you sure you want to delete this goal?")) {
-      deleteGoal(id);
-      refreshCurrentPageContent();
-      await syncWithServer();
+      success = await deleteGoal(id); // from data.js
     }
+  }
+  if (success) {
+    await syncWithServer();
   }
 }
 
 async function handleCategoryAction(name, type, action) {
+  let success = false;
   if (action === "delete") {
     if (
       confirm(`Are you sure you want to delete category "${name} (${type})"?`)
     ) {
-      if (deleteCategory(name, type)) {
-        refreshCurrentPageContent();
-        refreshCategoryDependentUIData();
-        await syncWithServer();
-      }
+      success = await deleteCategory(name, type); // from data.js
     }
+  }
+  if (success) {
+    await syncWithServer();
   }
 }
 
@@ -421,35 +405,24 @@ async function handleAccountFormSubmit(event) {
   }
   const name = document.getElementById("accountNameInput").value.trim();
   const email = document.getElementById("accountEmailInput").value.trim();
-  const currentEmail = getCurrentUserEmail();
+  const currentEmail = getCurrentUserEmail(); // from auth.js / data.js
   const profileUpdate = { name, email };
   if (uploadedAvatarDataUrl) {
-    profileUpdate.avatar = uploadedAvatarDataUrl;
+    profileUpdate.avatar = uploadedAvatarDataUrl; // Base64 data
   }
   try {
-    // FIX: Corrected endpoint path
-    const response = await apiFetch("/profile/index.php", {
-      method: "POST",
-      body: JSON.stringify(profileUpdate),
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.message || "Failed to update.");
-    const userProfile = getUserProfile();
-    userProfile.name = name;
-    userProfile.email = email;
-    if (profileUpdate.avatar) {
-      userProfile.avatar = profileUpdate.avatar;
-    }
-    saveUserProfile(userProfile);
+    const success = await saveUserProfile(profileUpdate); // from data.js
+    if (!success) throw new Error("Failed to update profile."); // saveUserProfile now returns true/false
     statusEl.textContent = "Profile updated successfully!";
     statusEl.classList.add("success");
     if (email !== currentEmail) {
       alert(
         "Your email has been updated. Please log in again with your new email address."
       );
-      logoutUser();
+      logoutUser(); // from auth.js
     } else {
-      refreshAllUI();
+      // Sync from server to ensure latest profile data (especially avatar URL) is reflected
+      await syncWithServer();
     }
   } catch (error) {
     statusEl.textContent = `Error: ${error.message}`;
@@ -464,19 +437,19 @@ function refreshCategoryDependentUIData() {
   if (currentPage === "dashboard") {
     const today = new Date();
     renderExpensesByCategory(
-      getTransactions(),
+      getTransactions(), // from data.js
       today.getMonth(),
       today.getFullYear()
     );
   }
   if (currentPage === "budgets") {
-    renderBudgetsPage(getBudgets());
+    renderBudgetsPage(getBudgets()); // from data.js
   }
 }
 
 function refreshCurrentPageContent() {
-  const transactions = getTransactions();
-  const userProfile = getUserProfile();
+  const transactions = getTransactions(); // from data.js
+  const userProfile = getUserProfile(); // from data.js
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
@@ -497,10 +470,10 @@ function refreshCurrentPageContent() {
       renderTransactionsPage(transactions);
       break;
     case "budgets":
-      renderBudgetsPage(getBudgets());
+      renderBudgetsPage(getBudgets()); // from data.js
       break;
     case "goals":
-      renderGoalsPage(getGoals());
+      renderGoalsPage(getGoals()); // from data.js
       break;
     case "account":
       renderAccountPage(userProfile);

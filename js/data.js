@@ -1,99 +1,124 @@
 // js/data.js
 
 // --- Authentication & User Identification ---
+// This function relies on auth.js setting the LOGGED_IN_USER_KEY
 function getCurrentUserEmail() {
-  // Uses the shared CONFIG from config.js
-  const email = localStorage.getItem(CONFIG.LOGGED_IN_USER_KEY);
-  if (!email) {
-    console.warn(
-      "User not logged in. Cannot determine user for data operations."
-    );
-  }
-  return email;
+  return localStorage.getItem(CONFIG.LOGGED_IN_USER_KEY);
 }
 
-// --- Core User-Scoped Data Storage (Local Cache) ---
-function getUserDataKey() {
-  const email = getCurrentUserEmail();
-  return email ? `userData_${email}` : null;
-}
+// --- In-Memory Data Cache ---
+// This will hold the "current" state of user data fetched from the server.
+// It's initialized with defaults but intended to be populated by syncWithServer.
+let appData = {
+  profile: { name: "Guest", email: "", avatar: null },
+  categories: [],
+  transactions: [],
+  budgets: {},
+  goals: [],
+};
 
-function getAllUserData() {
-  const dataKey = getUserDataKey();
-  if (!dataKey) {
-    console.warn("Attempted to get user data without a logged-in user key.");
-    return getDefaultUserDataStructure(true); // isTemporary = true
-  }
+// --- Core Data Management (Interacting with API) ---
 
-  const rawData = localStorage.getItem(dataKey);
-  if (rawData) {
-    try {
-      return JSON.parse(rawData);
-    } catch (e) {
-      console.error("Error parsing user data from localStorage:", e);
-      const defaultData = getDefaultUserDataStructure();
-      saveAllUserData(defaultData);
-      return defaultData;
-    }
-  }
-
-  console.log(`No local data for ${dataKey}, initializing with defaults.`);
-  const defaultData = getDefaultUserDataStructure();
-  saveAllUserData(defaultData);
-  return defaultData;
-}
-
-function saveAllUserData(userData) {
-  const dataKey = getUserDataKey();
-  if (!dataKey) {
-    console.error("CRITICAL: Attempted to save user data without a user key.");
-    return;
-  }
-  localStorage.setItem(dataKey, JSON.stringify(userData));
-}
-
-function getDefaultUserDataStructure(isTemporary = false) {
+// Initialize or clear local appData cache
+function initializeAppData() {
   const userEmail = getCurrentUserEmail();
-  return {
+  appData = {
     profile: {
-      name: isTemporary ? "Guest" : "New User",
-      email: userEmail || (isTemporary ? "" : "user@example.com"),
+      name: "Loading...",
+      email: userEmail || "",
       avatar: null,
     },
-    categories: [...DEFAULT_CATEGORIES_DATA],
+    categories: [...DEFAULT_CATEGORIES_DATA], // Default categories always available
     transactions: [],
-    budgets: { ...DEFAULT_BUDGETS },
+    budgets: {},
     goals: [],
   };
 }
 
-// --- Sub-data 'Getters' and 'Savers' ---
-// All the specific getter/setter functions (getTransactions, saveTransactions, etc.)
-// remain exactly the same as before and do not need to be changed.
+// This function will be called by app.js's syncWithServer
+function setAllUserData(serverData) {
+  // Merge server data with local defaults, prioritizing server data if available
+  // Profile is a special case, handled by its own endpoint, but we can update
+  // name/email if server provides it. Avatar URL is the key.
+  appData.profile = {
+    ...appData.profile, // Keep existing if server doesn't provide
+    ...serverData.profile,
+  };
+  appData.categories = serverData.categories || [...DEFAULT_CATEGORIES_DATA];
+  appData.transactions = serverData.transactions || [];
+  appData.budgets = serverData.budgets || {};
+  appData.goals = serverData.goals || [];
+}
+
+// --- Sub-data 'Getters' and 'Mutators' (now API-driven) ---
+// All these functions will now interact with the backend via `apiFetch`
+// and update the local `appData` cache.
+// `apiFetch` is defined in `app.js` and handles token authorization.
+
 // -- Transactions --
 function getTransactions() {
-  return getAllUserData().transactions || [];
+  return appData.transactions;
 }
-function saveTransactions(transactions) {
-  const userData = getAllUserData();
-  userData.transactions = transactions;
-  saveAllUserData(userData);
+async function addTransaction(transaction) {
+  try {
+    const response = await apiFetch("/data/index.php?type=transaction", {
+      method: "POST",
+      body: JSON.stringify(transaction),
+    });
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Failed to add transaction.");
+    // Update local cache with server's new data (optional, but good for consistency)
+    appData.transactions.push(result.data); // Assuming server returns the added item with an ID
+    return true;
+  } catch (error) {
+    console.error("Add transaction failed:", error);
+    alert(`Failed to add transaction: ${error.message}`);
+    return false;
+  }
 }
-function addTransaction(transaction) {
-  const transactions = getTransactions();
-  transactions.push({ ...transaction, id: Date.now().toString() });
-  saveTransactions(transactions);
+async function updateTransaction(id, updatedTransaction) {
+  try {
+    const response = await apiFetch(
+      `/data/index.php?type=transaction&id=${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(updatedTransaction),
+      }
+    );
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Failed to update transaction.");
+    // Update local cache
+    appData.transactions = appData.transactions.map((tx) =>
+      tx.id === id ? { ...tx, ...updatedTransaction, id } : tx
+    );
+    return true;
+  } catch (error) {
+    console.error("Update transaction failed:", error);
+    alert(`Failed to update transaction: ${error.message}`);
+    return false;
+  }
 }
-function updateTransaction(id, updatedTransaction) {
-  let transactions = getTransactions();
-  transactions = transactions.map((tx) =>
-    tx.id === id ? { ...tx, ...updatedTransaction, id } : tx
-  );
-  saveTransactions(transactions);
-}
-function deleteTransaction(id) {
-  let transactions = getTransactions().filter((tx) => tx.id !== id);
-  saveTransactions(transactions);
+async function deleteTransaction(id) {
+  try {
+    const response = await apiFetch(
+      `/data/index.php?type=transaction&id=${id}`,
+      {
+        method: "DELETE",
+      }
+    );
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Failed to delete transaction.");
+    // Update local cache
+    appData.transactions = appData.transactions.filter((tx) => tx.id !== id);
+    return true;
+  } catch (error) {
+    console.error("Delete transaction failed:", error);
+    alert(`Failed to delete transaction: ${error.message}`);
+    return false;
+  }
 }
 
 // -- Categories --
@@ -163,108 +188,199 @@ const DEFAULT_CATEGORIES_DATA = [
 ];
 
 function getAllCategories() {
-  return getAllUserData().categories || [];
+  // Returns from cache; `syncWithServer` keeps this updated
+  return appData.categories;
 }
-function saveAllCategories(categories) {
-  const userData = getAllUserData();
-  userData.categories = categories;
-  saveAllUserData(userData);
-}
-function addCategory(newCategory) {
-  const categories = getAllCategories();
-  const existing = categories.find(
-    (c) =>
-      c.name.toLowerCase() === newCategory.name.toLowerCase() &&
-      c.type === newCategory.type
-  );
-  if (existing) {
-    alert(
-      `Category "${newCategory.name}" already exists for ${newCategory.type}.`
+
+// Categories don't have update function as they are just names/types
+async function addCategory(newCategory) {
+  try {
+    const categories = getAllCategories();
+    const existing = categories.find(
+      (c) =>
+        c.name.toLowerCase() === newCategory.name.toLowerCase() &&
+        c.type === newCategory.type
     );
+    if (existing) {
+      alert(
+        `Category "${newCategory.name}" already exists for ${newCategory.type}.`
+      );
+      return false;
+    }
+
+    const response = await apiFetch("/data/index.php?type=category", {
+      method: "POST",
+      body: JSON.stringify(newCategory), // Send name, type, iconKey
+    });
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Failed to add category.");
+
+    appData.categories.push(result.data); // Assuming server returns the added category
+    return true;
+  } catch (error) {
+    console.error("Add category failed:", error);
+    alert(`Failed to add category: ${error.message}`);
     return false;
   }
-  categories.push({
-    name: newCategory.name,
-    type: newCategory.type,
-    iconKey: newCategory.iconKey || "Other",
-    isDefault: false,
-  });
-  saveAllCategories(categories);
-  return true;
 }
-function deleteCategory(categoryName, categoryType) {
-  let categories = getAllCategories();
-  const categoryIndex = categories.findIndex(
-    (c) => c.name === categoryName && c.type === categoryType && !c.isDefault
-  );
-  if (categoryIndex === -1) {
-    alert("Cannot delete default categories or category not found.");
+async function deleteCategory(categoryName, categoryType) {
+  try {
+    const categories = getAllCategories();
+    const categoryToDelete = categories.find(
+      (c) => c.name === categoryName && c.type === categoryType
+    );
+
+    if (!categoryToDelete) {
+      alert("Category not found.");
+      return false;
+    }
+    if (categoryToDelete.isDefault) {
+      alert("Cannot delete default categories.");
+      return false;
+    }
+
+    const response = await apiFetch(
+      `/data/index.php?type=category&name=${encodeURIComponent(
+        categoryName
+      )}&categoryType=${encodeURIComponent(categoryType)}`,
+      {
+        method: "DELETE",
+      }
+    );
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Failed to delete category.");
+
+    appData.categories = appData.categories.filter(
+      (c) => !(c.name === categoryName && c.type === categoryType)
+    );
+    return true;
+  } catch (error) {
+    console.error("Delete category failed:", error);
+    alert(`Failed to delete category: ${error.message}`);
     return false;
   }
-  categories.splice(categoryIndex, 1);
-  saveAllCategories(categories);
-  return true;
 }
 
 // -- Budgets --
+// Default budgets are examples only; user's budgets are driven by DB
 const DEFAULT_BUDGETS = {
-  "Entertainment (expense)": 750000,
-  "Food (expense)": 2000000,
-  "Healthcare (expense)": 300000,
-  "Shopping (expense)": 1000000,
-  "Transportation (expense)": 500000,
-  "Utilities (expense)": 800000,
-  "Other (expense)": 500000,
+  // These are now just examples for initial setup if no server data exists.
+  // Actual budgets will come from the server or be set by the user.
 };
+
 function getBudgets() {
-  return getAllUserData().budgets || {};
+  return appData.budgets;
 }
-function saveBudgets(budgets) {
-  const userData = getAllUserData();
-  userData.budgets = budgets;
-  saveAllUserData(userData);
+async function saveBudgets(budgets) {
+  // This function is for saving the *entire* budget object to the server.
+  // It effectively 'replaces' the server's budgets for the user.
+  // The UI currently allows setting/updating one budget at a time, so this
+  // function should be called with the updated `appData.budgets` object.
+  try {
+    const response = await apiFetch("/data/index.php?type=budget", {
+      method: "PUT", // Or POST if you want to create/overwrite
+      body: JSON.stringify(budgets), // Send the whole budgets object
+    });
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Failed to save budgets.");
+    appData.budgets = budgets; // Update local cache
+    return true;
+  } catch (error) {
+    console.error("Save budgets failed:", error);
+    alert(`Failed to save budgets: ${error.message}`);
+    return false;
+  }
 }
+// Note: Individual budget add/update/delete logic is handled by `saveBudgets`
+// on the client-side which then sends the whole object.
+// The server-side will handle individual budget category updates/deletes.
 
 // -- Goals --
 function getGoals() {
-  return getAllUserData().goals || [];
+  return appData.goals;
 }
-function saveGoals(goals) {
-  const userData = getAllUserData();
-  userData.goals = goals;
-  saveAllUserData(userData);
+async function addGoal(goal) {
+  try {
+    const response = await apiFetch("/data/index.php?type=goal", {
+      method: "POST",
+      body: JSON.stringify(goal),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "Failed to add goal.");
+    appData.goals.push(result.data); // Assuming server returns the added item with an ID
+    return true;
+  } catch (error) {
+    console.error("Add goal failed:", error);
+    alert(`Failed to add goal: ${error.message}`);
+    return false;
+  }
 }
-function addGoal(goal) {
-  const goals = getGoals();
-  goals.push({ ...goal, id: Date.now().toString() });
-  saveGoals(goals);
+async function updateGoal(id, updatedGoal) {
+  try {
+    const response = await apiFetch(`/data/index.php?type=goal&id=${id}`, {
+      method: "PUT",
+      body: JSON.stringify(updatedGoal),
+    });
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Failed to update goal.");
+    appData.goals = appData.goals.map((g) =>
+      g.id === id ? { ...g, ...updatedGoal, id } : g
+    );
+    return true;
+  } catch (error) {
+    console.error("Update goal failed:", error);
+    alert(`Failed to update goal: ${error.message}`);
+    return false;
+  }
 }
-function updateGoal(id, updatedGoal) {
-  let goals = getGoals().map((g) =>
-    g.id === id ? { ...g, ...updatedGoal, id } : g
-  );
-  saveGoals(goals);
-}
-function deleteGoal(id) {
-  let goals = getGoals().filter((g) => g.id !== id);
-  saveGoals(goals);
+async function deleteGoal(id) {
+  try {
+    const response = await apiFetch(`/data/index.php?type=goal&id=${id}`, {
+      method: "DELETE",
+    });
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Failed to delete goal.");
+    appData.goals = appData.goals.filter((g) => g.id !== id);
+    return true;
+  } catch (error) {
+    console.error("Delete goal failed:", error);
+    alert(`Failed to delete goal: ${error.message}`);
+    return false;
+  }
 }
 
 // -- User Profile --
 function getUserProfile() {
-  const profile = getAllUserData().profile || {};
-  if (!profile.email) {
-    profile.email = getCurrentUserEmail();
-  }
-  return profile;
+  // Returns from cache; `syncWithServer` or direct `saveUserProfile` keeps this updated
+  return appData.profile;
 }
-function saveUserProfile(profileData) {
-  const userData = getAllUserData();
-  userData.profile = profileData;
-  saveAllUserData(userData);
+async function saveUserProfile(profileData) {
+  try {
+    // profileData might contain the raw base64 avatar image
+    const response = await apiFetch("/profile/index.php", {
+      method: "POST", // POST for update/upload, as it might include file data
+      body: JSON.stringify(profileData),
+    });
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Failed to update profile.");
+
+    // Update local cache with the returned data (especially for avatar_url)
+    appData.profile = { ...appData.profile, ...result.data };
+    return true;
+  } catch (error) {
+    console.error("Save profile failed:", error);
+    alert(`Failed to save profile: ${error.message}`);
+    return false;
+  }
 }
 
-// --- Helper functions for UI (no changes needed) ---
+// --- Helper functions for UI (no changes needed for their logic, but they now use appData) ---
 const ICONS = {
   Food: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>`,
   Shopping: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>`,
@@ -310,3 +426,6 @@ function getCategoryColorClass(categoryName, categoryType = null) {
   }
   return "category-icon-Other";
 }
+
+// Initial setup of appData when script loads (before DOMContentLoaded)
+initializeAppData();

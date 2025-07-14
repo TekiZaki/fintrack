@@ -314,7 +314,7 @@ function openBudgetModal(categoryKey = null, amount = null) {
     // The populateBudgetCategoryDropdown function now handles pre-selection.
     // We still need to disable it if a categoryKey is provided (editing mode).
     if (categorySelect.querySelector(`option[value="${categoryKey}"]`)) {
-        categorySelect.value = categoryKey; // Ensure the value is set if the option exists
+      categorySelect.value = categoryKey; // Ensure the value is set if the option exists
     }
     categorySelect.disabled = true;
     document.getElementById("budgetAmountInput").value = new Intl.NumberFormat(
@@ -478,7 +478,7 @@ function renderGoalsPage(goals) {
           <div class="goal-info">
             <div class="goal-name">${goal.name}</div>
             <div class="goal-amounts">
-              <span class="current">${formatCurrency(currentAmount)}</span> of 
+              <span class="current">${formatCurrency(currentAmount)}</span> of
               <span class="target">${formatCurrency(targetAmount)}</span>
             </div>
             <div class="goal-progress-bar">
@@ -576,11 +576,20 @@ function updateSidebarUserDisplay(userProfile) {
   emailEl.textContent = userProfile.email;
   avatarEl.innerHTML = "";
 
-  if (userProfile.avatar) {
+  // Check for `avatar_url` from server
+  if (userProfile.avatar_url) {
+    const img = document.createElement("img");
+    img.src = userProfile.avatar_url;
+    img.alt = userProfile.name;
+    avatarEl.appendChild(img);
+    avatarEl.style.backgroundImage = "none"; // Remove background initials
+  } else if (userProfile.avatar) {
+    // Fallback for old local data (should be removed once fully migrated)
     const img = document.createElement("img");
     img.src = userProfile.avatar;
     img.alt = userProfile.name;
     avatarEl.appendChild(img);
+    avatarEl.style.backgroundImage = "none";
   } else {
     avatarEl.textContent = (userProfile.name || "JD")
       .split(" ")
@@ -588,6 +597,7 @@ function updateSidebarUserDisplay(userProfile) {
       .join("")
       .substring(0, 2)
       .toUpperCase();
+    avatarEl.style.backgroundImage = ""; // Ensure initials are visible
   }
 }
 
@@ -606,7 +616,13 @@ function renderAccountPage(userProfile) {
     "currentAccountAvatarInitials"
   );
 
-  if (userProfile.avatar) {
+  // Check for `avatar_url` from server
+  if (userProfile.avatar_url) {
+    avatarImg.src = userProfile.avatar_url;
+    avatarImg.style.display = "block";
+    avatarInitials.style.display = "none";
+  } else if (userProfile.avatar) {
+    // Fallback for old local data (should be removed once fully migrated)
     avatarImg.src = userProfile.avatar;
     avatarImg.style.display = "block";
     avatarInitials.style.display = "none";
