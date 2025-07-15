@@ -10,16 +10,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // from auth.js
     return;
   }
+  // Initialize data from localStorage first for offline access
+  initializeAppData(); // from data.js
   initApp();
 });
 
 async function initApp() {
   setupOnlineStatusListeners();
-  updateSidebarUserDisplay(getUserProfile()); // Initial display from default/cached profile
+  updateSidebarUserDisplay(getUserProfile()); // Initial display from local/cached profile
 
   setupEventListeners();
-  showPage(currentPage); // Shows the page content with initial data
-  await checkInitialOnlineStatus(); // Fetches and updates data from server
+  showPage(currentPage); // Shows the page content with locally stored data
+  await checkInitialOnlineStatus(); // Then, check connection and attempt sync
 }
 
 // --- Online/Offline & Synchronization Logic ---
@@ -31,7 +33,7 @@ function setupOnlineStatusListeners() {
 async function checkInitialOnlineStatus() {
   updateOnlineStatusUI(navigator.onLine);
   if (navigator.onLine) {
-    await syncWithServer(); // Pull all data from server on startup
+    await syncData(); // Sync with server on startup if online
   }
 }
 
@@ -41,12 +43,14 @@ async function handleConnectionChange(online) {
 
   if (justCameOnline) {
     console.log("Connection restored. Triggering server sync.");
-    await syncWithServer(); // Sync all data from server
+    await syncData(); // Sync all data from server
   }
 }
 
 function updateOnlineStatusUI(online) {
   isOnline = online;
+  const logoutLink = document.getElementById("logoutLink");
+
   document.querySelectorAll("#statusIndicator").forEach((indicator) => {
     const statusText = indicator.querySelector(".status-text");
     if (online) {
@@ -59,27 +63,60 @@ function updateOnlineStatusUI(online) {
       statusText.textContent = "Offline";
     }
   });
+
+  // NEW: Disable logout when offline
+  if (logoutLink) {
+    if (online) {
+      logoutLink.classList.remove("disabled");
+      logoutLink.title = "Logout";
+    } else {
+      logoutLink.classList.add("disabled");
+      logoutLink.title = "You must be online to log out.";
+    }
+  }
 }
 
-async function syncWithServer() {
+// RENAMED & MODIFIED: from syncWithServer to syncData
+async function syncData() {
   if (!navigator.onLine) {
     console.log("Offline. Skipping server sync.");
     updateOnlineStatusUI(false);
     return;
   }
 
-  console.log("Attempting to pull master data from server...");
+  console.log("Attempting to sync data with server...");
   try {
+    // Step 1: UPLOAD local changes first (Last Write Wins)
+    // This assumes a server endpoint that accepts and merges the entire data object.
+    const localDataKey = getDataStorageKey();
+    const localData = localDataKey
+      ? JSON.parse(localStorage.getItem(localDataKey))
+      : null;
+    if (localData) {
+      console.log("Uploading local state...");
+      // NOTE: This assumes you will create this endpoint on your server.
+      // For a full implementation, you'd send only unsynced changes or a full snapshot
+      // depending on your backend's merging strategy.
+      // The current data.js optimistic updates mark items as isSynced: false.
+      // A more robust sync would filter these and send them individually or in batches.
+      await apiFetch("/data/index.php?type=sync_upload", {
+        method: "POST",
+        body: JSON.stringify(localData), // Sending the whole data object
+      });
+    }
+
+    // Step 2: DOWNLOAD the master/merged data from the server
+    console.log("Downloading master data from server...");
     const downloadResponse = await apiFetch("/data/index.php?type=all");
     if (!downloadResponse.ok) throw new Error("Data download failed.");
     const serverData = await downloadResponse.json();
 
-    // Set the appData cache directly with server's master data
-    setAllUserData(serverData.data); // From data.js, sets the in-memory cache
+    // Step 3: Update local cache and save to localStorage
+    setAllUserData(serverData.data); // From data.js, sets cache and saves to localStorage
 
     updateOnlineStatusUI(true);
     refreshAllUI();
-    console.log("Sync complete. Local data cache is now up-to-date.");
+    console.log("Sync complete. Local data is now up-to-date with server.");
   } catch (error) {
     console.error("Server sync failed:", error.message);
     if (error.message !== "Unauthorized") {
@@ -159,9 +196,16 @@ function setupEventListeners() {
       populateCategoryDropdown("category", e.target.value)
     );
   document.body.addEventListener("click", handleActionClicks);
+  // MODIFIED: Logout listener
   document.getElementById("logoutLink")?.addEventListener("click", (e) => {
     e.preventDefault();
-    logoutUser();
+    if (e.currentTarget.classList.contains("disabled")) {
+      alert("Logout is disabled while you are offline.");
+      return;
+    }
+    if (confirm("Are you sure you want to log out?")) {
+      logoutUser();
+    }
   });
 }
 
@@ -196,6 +240,8 @@ function handleActionClicks(event) {
 
 function setupNavigation() {
   const navLinks = document.querySelectorAll(".nav-link");
+  const sidebar = document.querySelector(".sidebar"); // Get the sidebar element
+
   navLinks.forEach((link) => {
     if (link.id === "logoutLink") return;
     link.addEventListener("click", () => {
@@ -204,6 +250,10 @@ function setupNavigation() {
         navLinks.forEach((l) => l.classList.remove("active"));
         link.classList.add("active");
         showPage(pageId);
+        // Close the sidebar if it's open (for mobile view)
+        if (sidebar && sidebar.classList.contains("open")) {
+          sidebar.classList.remove("open");
+        }
       }
     });
   });
@@ -217,14 +267,17 @@ function showPage(pageId) {
   if (targetPage) {
     targetPage.classList.add("active-page");
     currentPage = pageId;
-    document.getElementById("currentPageTitle").textContent = pageId;
+    document.getElementById("currentPageTitle").textContent =
+      pageId.charAt(0).toUpperCase() + pageId.slice(1); // Capitalize
     refreshCurrentPageContent(); // Ensure current page content is fresh
   } else {
     showPage("dashboard"); // Fallback to dashboard
   }
 }
 
-async function handleFormSubmit(event) {
+// --- Form & Action Handlers (made optimistic) ---
+
+function handleFormSubmit(event) {
   event.preventDefault();
   const id = document.getElementById("transactionId").value;
   const formattedAmount = document.getElementById("amount").value;
@@ -240,20 +293,19 @@ async function handleFormSubmit(event) {
     alert("Please enter a valid positive number for the amount.");
     return;
   }
-  let success = false;
-  if (id) {
-    success = await updateTransaction(id, transaction); // from data.js
-  } else {
-    success = await addTransaction(transaction); // from data.js
-  }
+
+  const success = id
+    ? updateTransaction(id, transaction)
+    : addTransaction(transaction); // Call data.js functions
+
   if (success) {
     closeModal();
-    // After any data modification, refresh data from server to ensure consistency
-    await syncWithServer();
+    refreshCurrentPageContent(); // Refresh UI from local data immediately
+    if (isOnline) syncData(); // Sync in background to get server IDs etc.
   }
 }
 
-async function handleBudgetFormSubmit(event) {
+function handleBudgetFormSubmit(event) {
   event.preventDefault();
   const category =
     document.getElementById("editingBudgetCategoryKey").value ||
@@ -265,19 +317,19 @@ async function handleBudgetFormSubmit(event) {
     alert("Please select a category and enter a valid, non-negative amount.");
     return;
   }
-  let currentBudgets = getBudgets(); // from data.js (in-memory cache)
-  const updatedBudgets = {
-    ...currentBudgets,
-    [category]: amount,
-  };
-  const success = await saveBudgets(updatedBudgets); // from data.js
+  let currentBudgets = getBudgets(); // Get from local appData cache
+  const updatedBudgets = { ...currentBudgets, [category]: amount };
+
+  const success = saveBudgets(updatedBudgets); // Call data.js function
+
   if (success) {
     closeBudgetModal();
-    await syncWithServer();
+    refreshCurrentPageContent();
+    if (isOnline) syncData();
   }
 }
 
-async function handleGoalFormSubmit(event) {
+function handleGoalFormSubmit(event) {
   event.preventDefault();
   const id = document.getElementById("goalIdInput").value;
   const goal = {
@@ -294,19 +346,17 @@ async function handleGoalFormSubmit(event) {
     alert("Please enter a goal name and a valid positive target amount.");
     return;
   }
-  let success = false;
-  if (id) {
-    success = await updateGoal(id, goal); // from data.js
-  } else {
-    success = await addGoal(goal); // from data.js
-  }
+
+  const success = id ? updateGoal(id, goal) : addGoal(goal); // Call data.js functions
+
   if (success) {
     closeGoalModal();
-    await syncWithServer();
+    refreshCurrentPageContent();
+    if (isOnline) syncData();
   }
 }
 
-async function handleCategoryFormSubmit(event) {
+function handleCategoryFormSubmit(event) {
   event.preventDefault();
   const categoryName = document
     .getElementById("categoryNameInput")
@@ -316,82 +366,84 @@ async function handleCategoryFormSubmit(event) {
     alert("Category name cannot be empty.");
     return;
   }
-  // No need to check for existing categories here, `addCategory` will do it
-  const success = await addCategory({
+
+  const success = addCategory({
     name: categoryName,
     type: categoryType,
-    iconKey: "Other", // Default icon for new categories
+    iconKey: "Other",
     isDefault: false,
-  }); // from data.js
+  }); // Call data.js function
+
   if (success) {
     closeCategoryModal();
-    await syncWithServer();
+    refreshCurrentPageContent();
+    if (isOnline) syncData();
   }
 }
 
-async function handleTransactionAction(id, action) {
-  let success = false;
+function handleTransactionAction(id, action) {
   if (action === "edit") {
-    const tx = getTransactions().find((t) => t.id === id); // from data.js
+    const tx = getTransactions().find((t) => t.id === id);
     if (tx) openModal(tx);
   } else if (action === "delete") {
     if (confirm("Are you sure you want to delete this transaction?")) {
-      success = await deleteTransaction(id); // from data.js
+      if (deleteTransaction(id)) {
+        // Call data.js function
+        refreshCurrentPageContent();
+        if (isOnline) syncData();
+      }
     }
-  }
-  if (success) {
-    await syncWithServer();
   }
 }
 
-async function handleBudgetAction(category, action, amount = null) {
-  let success = false;
+function handleBudgetAction(category, action, amount = null) {
   if (action === "edit") {
     openBudgetModal(category, amount);
   } else if (action === "delete") {
     if (
       confirm(`Are you sure you want to delete the budget for "${category}"?`)
     ) {
-      // Modify the in-memory budget object and then save it to server
-      const budgets = getBudgets(); // from data.js
+      const budgets = getBudgets();
       delete budgets[category];
-      success = await saveBudgets(budgets); // from data.js
+      if (saveBudgets(budgets)) {
+        // Call data.js function
+        refreshCurrentPageContent();
+        if (isOnline) syncData();
+      }
     }
-  }
-  if (success) {
-    await syncWithServer();
   }
 }
 
-async function handleGoalAction(id, action) {
-  let success = false;
+function handleGoalAction(id, action) {
   if (action === "edit") {
-    const goal = getGoals().find((g) => g.id === id); // from data.js
+    const goal = getGoals().find((g) => g.id === id);
     if (goal) openGoalModal(goal);
   } else if (action === "delete") {
     if (confirm("Are you sure you want to delete this goal?")) {
-      success = await deleteGoal(id); // from data.js
+      if (deleteGoal(id)) {
+        // Call data.js function
+        refreshCurrentPageContent();
+        if (isOnline) syncData();
+      }
     }
-  }
-  if (success) {
-    await syncWithServer();
   }
 }
 
-async function handleCategoryAction(name, type, action) {
-  let success = false;
+function handleCategoryAction(name, type, action) {
   if (action === "delete") {
     if (
       confirm(`Are you sure you want to delete category "${name} (${type})"?`)
     ) {
-      success = await deleteCategory(name, type); // from data.js
+      if (deleteCategory(name, type)) {
+        // Call data.js function
+        refreshCurrentPageContent();
+        if (isOnline) syncData();
+      }
     }
-  }
-  if (success) {
-    await syncWithServer();
   }
 }
 
+// NOTE: handleAccountFormSubmit remains async because saveUserProfile is a blocking call.
 async function handleAccountFormSubmit(event) {
   event.preventDefault();
   const statusEl = document.getElementById("accountUpdateStatus");
@@ -422,7 +474,7 @@ async function handleAccountFormSubmit(event) {
       logoutUser(); // from auth.js
     } else {
       // Sync from server to ensure latest profile data (especially avatar URL) is reflected
-      await syncWithServer();
+      await syncData(); // Renamed from syncWithServer
     }
   } catch (error) {
     statusEl.textContent = `Error: ${error.message}`;
@@ -433,6 +485,7 @@ async function handleAccountFormSubmit(event) {
   }
 }
 
+// --- Page Content & Rendering ---
 function refreshCategoryDependentUIData() {
   if (currentPage === "dashboard") {
     const today = new Date();

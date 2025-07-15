@@ -1,14 +1,18 @@
 // js/data.js
 
 // --- Authentication & User Identification ---
-// This function relies on auth.js setting the LOGGED_IN_USER_KEY
 function getCurrentUserEmail() {
   return localStorage.getItem(CONFIG.LOGGED_IN_USER_KEY);
 }
 
+// NEW: Helper to get the storage key for user data
+function getDataStorageKey() {
+  const email = getCurrentUserEmail();
+  if (!email) return null;
+  return `fintrack-data-${email}`;
+}
+
 // --- In-Memory Data Cache ---
-// This will hold the "current" state of user data fetched from the server.
-// It's initialized with defaults but intended to be populated by syncWithServer.
 let appData = {
   profile: { name: "Guest", email: "", avatar: null },
   categories: [],
@@ -17,108 +21,152 @@ let appData = {
   goals: [],
 };
 
-// --- Core Data Management (Interacting with API) ---
-
-// Initialize or clear local appData cache
-function initializeAppData() {
-  const userEmail = getCurrentUserEmail();
-  appData = {
-    profile: {
-      name: "Loading...",
-      email: userEmail || "",
-      avatar: null,
-    },
-    categories: [...DEFAULT_CATEGORIES_DATA], // Default categories always available
-    transactions: [],
-    budgets: {},
-    goals: [],
-  };
+// NEW: Function to save the entire appData state to localStorage
+function saveAllUserDataToLocal() {
+  const key = getDataStorageKey();
+  if (key) {
+    localStorage.setItem(key, JSON.stringify(appData));
+  }
 }
 
-// This function will be called by app.js's syncWithServer
+// MODIFIED: Initialize or clear local appData cache by loading from localStorage first.
+function initializeAppData() {
+  const key = getDataStorageKey();
+  const localData = key ? localStorage.getItem(key) : null;
+
+  if (localData) {
+    console.log("Loading data from localStorage.");
+    appData = JSON.parse(localData);
+  } else {
+    console.log("Initializing with default data.");
+    const userEmail = getCurrentUserEmail();
+    appData = {
+      profile: { name: "Loading...", email: userEmail || "", avatar: null },
+      categories: [...DEFAULT_CATEGORIES_DATA],
+      transactions: [],
+      budgets: {},
+      goals: [],
+    };
+  }
+}
+
+// MODIFIED: This function now also saves the synced data to localStorage
 function setAllUserData(serverData) {
-  // Merge server data with local defaults, prioritizing server data if available
-  // Profile is a special case, handled by its own endpoint, but we can update
-  // name/email if server provides it. Avatar URL is the key.
-  appData.profile = {
-    ...appData.profile, // Keep existing if server doesn't provide
-    ...serverData.profile,
-  };
+  appData.profile = { ...appData.profile, ...serverData.profile };
   appData.categories = serverData.categories || [...DEFAULT_CATEGORIES_DATA];
   appData.transactions = serverData.transactions || [];
   appData.budgets = serverData.budgets || {};
   appData.goals = serverData.goals || [];
+
+  // After updating from server, save to localStorage to keep it as the source of truth
+  saveAllUserDataToLocal();
 }
 
-// --- Sub-data 'Getters' and 'Mutators' (now API-driven) ---
-// All these functions will now interact with the backend via `apiFetch`
-// and update the local `appData` cache.
-// `apiFetch` is defined in `app.js` and handles token authorization.
+// --- Sub-data 'Getters' and 'Mutators' (now API-driven and localStorage-backed) ---
+// All mutators are now "optimistic": they update local data first, save to localStorage,
+// and then attempt to sync with the server in the background without blocking the UI.
 
 // -- Transactions --
 function getTransactions() {
   return appData.transactions;
 }
-async function addTransaction(transaction) {
-  try {
-    const response = await apiFetch("/data/index.php?type=transaction", {
+
+function addTransaction(transaction) {
+  // Generate a local ID for immediate UI update. Server will provide the final ID.
+  const newId = `local_${new Date().getTime()}`;
+  const newTransaction = { ...transaction, id: newId, isSynced: false }; // Mark as not synced yet
+  appData.transactions.push(newTransaction);
+  saveAllUserDataToLocal();
+
+  if (navigator.onLine) {
+    apiFetch("/data/index.php?type=transaction", {
       method: "POST",
       body: JSON.stringify(transaction),
-    });
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.message || "Failed to add transaction.");
-    // Update local cache with server's new data (optional, but good for consistency)
-    appData.transactions.push(result.data); // Assuming server returns the added item with an ID
-    return true;
-  } catch (error) {
-    console.error("Add transaction failed:", error);
-    alert(`Failed to add transaction: ${error.message}`);
-    return false;
+    })
+      .then((response) => response.json())
+      .then((serverResult) => {
+        if (serverResult.success && serverResult.data) {
+          // Replace local temporary transaction with server-provided one
+          appData.transactions = appData.transactions.map((tx) =>
+            tx.id === newId ? { ...serverResult.data, isSynced: true } : tx
+          );
+          saveAllUserDataToLocal(); // Save updated local data with server ID
+        } else {
+          console.error(
+            "Server failed to add transaction, keeping local copy as unsynced:",
+            serverResult.message
+          );
+          // Optionally, mark original local transaction as 'failed to sync'
+        }
+      })
+      .catch((err) => {
+        console.error("Background sync for addTransaction failed:", err);
+        // Optionally, mark original local transaction as 'failed to sync'
+      });
+  } else {
+    console.log("Offline: Transaction added locally. Will sync when online.");
   }
+  return true;
 }
-async function updateTransaction(id, updatedTransaction) {
-  try {
-    const response = await apiFetch(
-      `/data/index.php?type=transaction&id=${id}`,
-      {
-        method: "PUT",
-        body: JSON.stringify(updatedTransaction),
-      }
-    );
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.message || "Failed to update transaction.");
-    // Update local cache
-    appData.transactions = appData.transactions.map((tx) =>
-      tx.id === id ? { ...tx, ...updatedTransaction, id } : tx
-    );
-    return true;
-  } catch (error) {
-    console.error("Update transaction failed:", error);
-    alert(`Failed to update transaction: ${error.message}`);
-    return false;
+
+function updateTransaction(id, updatedTransaction) {
+  appData.transactions = appData.transactions.map(
+    (tx) =>
+      tx.id === id ? { ...tx, ...updatedTransaction, id, isSynced: false } : tx // Mark as not synced
+  );
+  saveAllUserDataToLocal();
+
+  if (navigator.onLine) {
+    apiFetch(`/data/index.php?type=transaction&id=${id}`, {
+      method: "PUT",
+      body: JSON.stringify(updatedTransaction),
+    })
+      .then((response) => response.json())
+      .then((serverResult) => {
+        if (serverResult.success) {
+          appData.transactions = appData.transactions.map((tx) =>
+            tx.id === id ? { ...tx, isSynced: true } : tx
+          );
+          saveAllUserDataToLocal(); // Update sync status
+        } else {
+          console.error(
+            "Server failed to update transaction, keeping local copy as unsynced:",
+            serverResult.message
+          );
+        }
+      })
+      .catch((err) =>
+        console.error("Background sync for updateTransaction failed:", err)
+      );
+  } else {
+    console.log("Offline: Transaction updated locally. Will sync when online.");
   }
+  return true;
 }
-async function deleteTransaction(id) {
-  try {
-    const response = await apiFetch(
-      `/data/index.php?type=transaction&id=${id}`,
-      {
-        method: "DELETE",
-      }
-    );
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.message || "Failed to delete transaction.");
-    // Update local cache
-    appData.transactions = appData.transactions.filter((tx) => tx.id !== id);
-    return true;
-  } catch (error) {
-    console.error("Delete transaction failed:", error);
-    alert(`Failed to delete transaction: ${error.message}`);
-    return false;
+
+function deleteTransaction(id) {
+  appData.transactions = appData.transactions.filter((tx) => tx.id !== id);
+  saveAllUserDataToLocal();
+
+  if (navigator.onLine) {
+    apiFetch(`/data/index.php?type=transaction&id=${id}`, { method: "DELETE" })
+      .then((response) => response.json())
+      .then((serverResult) => {
+        if (!serverResult.success) {
+          console.error(
+            "Server failed to delete transaction:",
+            serverResult.message
+          );
+          // Optionally, re-add the transaction to appData if server deletion failed
+        }
+      })
+      .catch((err) =>
+        console.error("Background sync for deleteTransaction failed:", err)
+      );
+  } else {
+    console.log("Offline: Transaction deleted locally. Will sync when online.");
   }
+  return true;
 }
 
 // -- Categories --
@@ -188,190 +236,240 @@ const DEFAULT_CATEGORIES_DATA = [
 ];
 
 function getAllCategories() {
-  // Returns from cache; `syncWithServer` keeps this updated
   return appData.categories;
 }
 
-// Categories don't have update function as they are just names/types
-async function addCategory(newCategory) {
-  try {
-    const categories = getAllCategories();
-    const existing = categories.find(
-      (c) =>
-        c.name.toLowerCase() === newCategory.name.toLowerCase() &&
-        c.type === newCategory.type
+function addCategory(newCategory) {
+  const existing = getAllCategories().find(
+    (c) =>
+      c.name.toLowerCase() === newCategory.name.toLowerCase() &&
+      c.type === newCategory.type
+  );
+  if (existing) {
+    alert(
+      `Category "${newCategory.name}" already exists for ${newCategory.type}.`
     );
-    if (existing) {
-      alert(
-        `Category "${newCategory.name}" already exists for ${newCategory.type}.`
-      );
-      return false;
-    }
+    return false;
+  }
+  const newId = `local_cat_${new Date().getTime()}`;
+  const categoryWithLocalId = { ...newCategory, id: newId, isSynced: false }; // Add local ID and sync status
+  appData.categories.push(categoryWithLocalId);
+  saveAllUserDataToLocal();
 
-    const response = await apiFetch("/data/index.php?type=category", {
+  if (navigator.onLine) {
+    apiFetch("/data/index.php?type=category", {
       method: "POST",
-      body: JSON.stringify(newCategory), // Send name, type, iconKey
-    });
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.message || "Failed to add category.");
-
-    appData.categories.push(result.data); // Assuming server returns the added category
-    return true;
-  } catch (error) {
-    console.error("Add category failed:", error);
-    alert(`Failed to add category: ${error.message}`);
-    return false;
+      body: JSON.stringify(newCategory),
+    })
+      .then((response) => response.json())
+      .then((serverResult) => {
+        if (serverResult.success && serverResult.data) {
+          // Replace local temporary category with server-provided one
+          appData.categories = appData.categories.map((cat) =>
+            cat.id === newId ? { ...serverResult.data, isSynced: true } : cat
+          );
+          saveAllUserDataToLocal();
+        } else {
+          console.error(
+            "Server failed to add category, keeping local copy as unsynced:",
+            serverResult.message
+          );
+        }
+      })
+      .catch((err) =>
+        console.error("Background sync for addCategory failed:", err)
+      );
+  } else {
+    console.log("Offline: Category added locally. Will sync when online.");
   }
+  return true;
 }
-async function deleteCategory(categoryName, categoryType) {
-  try {
-    const categories = getAllCategories();
-    const categoryToDelete = categories.find(
-      (c) => c.name === categoryName && c.type === categoryType
-    );
 
-    if (!categoryToDelete) {
-      alert("Category not found.");
-      return false;
-    }
-    if (categoryToDelete.isDefault) {
-      alert("Cannot delete default categories.");
-      return false;
-    }
-
-    const response = await apiFetch(
-      `/data/index.php?type=category&name=${encodeURIComponent(
-        categoryName
-      )}&categoryType=${encodeURIComponent(categoryType)}`,
-      {
-        method: "DELETE",
-      }
-    );
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.message || "Failed to delete category.");
-
-    appData.categories = appData.categories.filter(
-      (c) => !(c.name === categoryName && c.type === categoryType)
-    );
-    return true;
-  } catch (error) {
-    console.error("Delete category failed:", error);
-    alert(`Failed to delete category: ${error.message}`);
+function deleteCategory(categoryName, categoryType) {
+  const categoryToDelete = getAllCategories().find(
+    (c) => c.name === categoryName && c.type === categoryType
+  );
+  if (!categoryToDelete) {
+    alert("Category not found.");
     return false;
   }
+  if (categoryToDelete.isDefault) {
+    alert("Cannot delete default categories.");
+    return false;
+  }
+
+  appData.categories = appData.categories.filter(
+    (c) => !(c.name === categoryName && c.type === categoryType)
+  );
+  saveAllUserDataToLocal();
+
+  if (navigator.onLine) {
+    const url = `/data/index.php?type=category&name=${encodeURIComponent(
+      categoryName
+    )}&categoryType=${encodeURIComponent(categoryType)}`;
+    apiFetch(url, { method: "DELETE" })
+      .then((response) => response.json())
+      .then((serverResult) => {
+        if (!serverResult.success) {
+          console.error(
+            "Server failed to delete category:",
+            serverResult.message
+          );
+          // Optionally, re-add the category to appData if server deletion failed
+        }
+      })
+      .catch((err) =>
+        console.error("Background sync for deleteCategory failed:", err)
+      );
+  } else {
+    console.log("Offline: Category deleted locally. Will sync when online.");
+  }
+  return true;
 }
 
 // -- Budgets --
-// Default budgets are examples only; user's budgets are driven by DB
-const DEFAULT_BUDGETS = {
-  // These are now just examples for initial setup if no server data exists.
-  // Actual budgets will come from the server or be set by the user.
-};
-
 function getBudgets() {
   return appData.budgets;
 }
-async function saveBudgets(budgets) {
-  // This function is for saving the *entire* budget object to the server.
-  // It effectively 'replaces' the server's budgets for the user.
-  // The UI currently allows setting/updating one budget at a time, so this
-  // function should be called with the updated `appData.budgets` object.
-  try {
-    const response = await apiFetch("/data/index.php?type=budget", {
-      method: "PUT", // Or POST if you want to create/overwrite
-      body: JSON.stringify(budgets), // Send the whole budgets object
-    });
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.message || "Failed to save budgets.");
-    appData.budgets = budgets; // Update local cache
-    return true;
-  } catch (error) {
-    console.error("Save budgets failed:", error);
-    alert(`Failed to save budgets: ${error.message}`);
-    return false;
+
+function saveBudgets(budgets) {
+  appData.budgets = budgets;
+  saveAllUserDataToLocal();
+
+  if (navigator.onLine) {
+    apiFetch("/data/index.php?type=budget", {
+      method: "PUT",
+      body: JSON.stringify(budgets),
+    })
+      .then((response) => response.json())
+      .then((serverResult) => {
+        if (!serverResult.success) {
+          console.error("Server failed to save budgets:", serverResult.message);
+        }
+      })
+      .catch((err) =>
+        console.error("Background sync for saveBudgets failed:", err)
+      );
+  } else {
+    console.log("Offline: Budgets saved locally. Will sync when online.");
   }
+  return true;
 }
-// Note: Individual budget add/update/delete logic is handled by `saveBudgets`
-// on the client-side which then sends the whole object.
-// The server-side will handle individual budget category updates/deletes.
 
 // -- Goals --
 function getGoals() {
   return appData.goals;
 }
-async function addGoal(goal) {
-  try {
-    const response = await apiFetch("/data/index.php?type=goal", {
+
+function addGoal(goal) {
+  const newId = `local_goal_${new Date().getTime()}`;
+  const goalWithLocalId = { ...goal, id: newId, isSynced: false };
+  appData.goals.push(goalWithLocalId);
+  saveAllUserDataToLocal();
+
+  if (navigator.onLine) {
+    apiFetch("/data/index.php?type=goal", {
       method: "POST",
       body: JSON.stringify(goal),
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.message || "Failed to add goal.");
-    appData.goals.push(result.data); // Assuming server returns the added item with an ID
-    return true;
-  } catch (error) {
-    console.error("Add goal failed:", error);
-    alert(`Failed to add goal: ${error.message}`);
-    return false;
+    })
+      .then((response) => response.json())
+      .then((serverResult) => {
+        if (serverResult.success && serverResult.data) {
+          appData.goals = appData.goals.map((g) =>
+            g.id === newId ? { ...serverResult.data, isSynced: true } : g
+          );
+          saveAllUserDataToLocal();
+        } else {
+          console.error(
+            "Server failed to add goal, keeping local copy as unsynced:",
+            serverResult.message
+          );
+        }
+      })
+      .catch((err) =>
+        console.error("Background sync for addGoal failed:", err)
+      );
+  } else {
+    console.log("Offline: Goal added locally. Will sync when online.");
   }
-}
-async function updateGoal(id, updatedGoal) {
-  try {
-    const response = await apiFetch(`/data/index.php?type=goal&id=${id}`, {
-      method: "PUT",
-      body: JSON.stringify(updatedGoal),
-    });
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.message || "Failed to update goal.");
-    appData.goals = appData.goals.map((g) =>
-      g.id === id ? { ...g, ...updatedGoal, id } : g
-    );
-    return true;
-  } catch (error) {
-    console.error("Update goal failed:", error);
-    alert(`Failed to update goal: ${error.message}`);
-    return false;
-  }
-}
-async function deleteGoal(id) {
-  try {
-    const response = await apiFetch(`/data/index.php?type=goal&id=${id}`, {
-      method: "DELETE",
-    });
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.message || "Failed to delete goal.");
-    appData.goals = appData.goals.filter((g) => g.id !== id);
-    return true;
-  } catch (error) {
-    console.error("Delete goal failed:", error);
-    alert(`Failed to delete goal: ${error.message}`);
-    return false;
-  }
+  return true;
 }
 
-// -- User Profile --
+function updateGoal(id, updatedGoal) {
+  appData.goals = appData.goals.map((g) =>
+    g.id === id ? { ...g, ...updatedGoal, id, isSynced: false } : g
+  );
+  saveAllUserDataToLocal();
+
+  if (navigator.onLine) {
+    apiFetch(`/data/index.php?type=goal&id=${id}`, {
+      method: "PUT",
+      body: JSON.stringify(updatedGoal),
+    })
+      .then((response) => response.json())
+      .then((serverResult) => {
+        if (serverResult.success) {
+          appData.goals = appData.goals.map((g) =>
+            g.id === id ? { ...g, isSynced: true } : g
+          );
+          saveAllUserDataToLocal();
+        } else {
+          console.error(
+            "Server failed to update goal, keeping local copy as unsynced:",
+            serverResult.message
+          );
+        }
+      })
+      .catch((err) =>
+        console.error("Background sync for updateGoal failed:", err)
+      );
+  } else {
+    console.log("Offline: Goal updated locally. Will sync when online.");
+  }
+  return true;
+}
+
+function deleteGoal(id) {
+  appData.goals = appData.goals.filter((g) => g.id !== id);
+  saveAllUserDataToLocal();
+
+  if (navigator.onLine) {
+    apiFetch(`/data/index.php?type=goal&id=${id}`, { method: "DELETE" })
+      .then((response) => response.json())
+      .then((serverResult) => {
+        if (!serverResult.success) {
+          console.error("Server failed to delete goal:", serverResult.message);
+        }
+      })
+      .catch((err) =>
+        console.error("Background sync for deleteGoal failed:", err)
+      );
+  } else {
+    console.log("Offline: Goal deleted locally. Will sync when online.");
+  }
+  return true;
+}
+
+// -- User Profile -- (This remains async and blocking due to its sensitive nature)
 function getUserProfile() {
-  // Returns from cache; `syncWithServer` or direct `saveUserProfile` keeps this updated
   return appData.profile;
 }
+
 async function saveUserProfile(profileData) {
+  if (!navigator.onLine) {
+    alert("You must be online to update your profile.");
+    return false;
+  }
   try {
-    // profileData might contain the raw base64 avatar image
     const response = await apiFetch("/profile/index.php", {
-      method: "POST", // POST for update/upload, as it might include file data
+      method: "POST",
       body: JSON.stringify(profileData),
     });
     const result = await response.json();
     if (!response.ok)
       throw new Error(result.message || "Failed to update profile.");
-
-    // Update local cache with the returned data (especially for avatar_url)
     appData.profile = { ...appData.profile, ...result.data };
+    saveAllUserDataToLocal();
     return true;
   } catch (error) {
     console.error("Save profile failed:", error);
@@ -380,7 +478,7 @@ async function saveUserProfile(profileData) {
   }
 }
 
-// --- Helper functions for UI (no changes needed for their logic, but they now use appData) ---
+// --- Helper functions for UI ---
 const ICONS = {
   Food: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>`,
   Shopping: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>`,
@@ -427,5 +525,6 @@ function getCategoryColorClass(categoryName, categoryType = null) {
   return "category-icon-Other";
 }
 
-// Initial setup of appData when script loads (before DOMContentLoaded)
-initializeAppData();
+// MODIFIED: This must be called at the end of the script, but before app.js needs it.
+// We'll call it explicitly in app.js's DOMContentLoaded listener instead.
+// initializeAppData(); // No longer called here directly
