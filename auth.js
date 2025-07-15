@@ -148,13 +148,24 @@ async function loginUser(email, password) {
   }
 }
 
-// The rest of auth.js (logoutUser, checkAuth, getCurrentUserEmail) remains unchanged.
+// *** MODIFIED FUNCTION ***
 function logoutUser() {
-  const userEmail = getCurrentUserEmail(); // from auth.js, but also used by data.js
+  // Get the email of the user who is currently logged in, BEFORE clearing it.
+  const userEmail = getCurrentUserEmail();
+
+  // Remove the authentication token and the logged-in user identifier.
   localStorage.removeItem(CONFIG.LOGGED_IN_USER_KEY);
   localStorage.removeItem(CONFIG.AUTH_TOKEN_KEY);
-  // No need to remove `userData_${userEmail}` key, as it's no longer used for core data.
-  // The in-memory cache in data.js will be cleared implicitly by reload or next login.
+
+  // IMPORTANT: Remove the specific data for the logged-out user.
+  // This prevents the data of the old user from being loaded by a new user.
+  if (userEmail) {
+    const userDataKey = `fintrack-data-${userEmail}`;
+    localStorage.removeItem(userDataKey);
+    console.log(`Cleared user data from localStorage for key: ${userDataKey}`);
+  }
+
+  // Redirect to the login page.
   window.location.href = "loginregis.html";
 }
 
